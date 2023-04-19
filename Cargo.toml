@@ -1,0 +1,14 @@
+[package]
+name = "meta_pl"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "meta"
+path = "src/lib.rs"
+
+[[bin]]
+name = "testbed"
+path = "src/bin.rs"
+
+[dependencies]
