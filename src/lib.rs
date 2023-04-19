@@ -1,3 +1,3 @@
-pub fn test() {
-    println!("Hello, World!");
-}
+mod meta;
+
+pub use meta::*;
