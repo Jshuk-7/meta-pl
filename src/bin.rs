@@ -5,6 +5,6 @@ fn main() {
         let mut lexer = Lexer::new(source);
         lexer.make_tokens();
 
-        println!("{:#?}", lexer.get_tokens().len());
+        println!("{:#?}", lexer.get_tokens());
     }
 }

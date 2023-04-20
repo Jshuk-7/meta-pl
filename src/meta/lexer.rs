@@ -1,4 +1,4 @@
-use crate::token::{Token, TokenType, Position};
+use crate::token::{LiteralType, Position, Token, TokenType};
 
 pub struct Lexer {
     source: Vec<char>,
@@ -24,12 +24,48 @@ impl Lexer {
     pub fn make_tokens(&mut self) {
         while self.valid() {
             let first = self.character();
-            let pos = Position::from("Script.mt".to_string(), self.row as u32, (self.cursor - self.line_start) as u32);
+            let pos = Position::from(
+                "Script.mt".to_string(),
+                self.row as u32,
+                (self.cursor - self.line_start) as u32,
+            );
 
-            if first.is_alphanumeric() {
+            let punctuation_tokens = "(){};:";
+
+            if punctuation_tokens.contains(first) {
+                match first {
+                    '(' => {
+                        let token = Token::from(TokenType::Oparen, String::from(first), pos);
+                        self.tokens.push(token);
+                    }
+                    ')' => {
+                        let token = Token::from(TokenType::Cparen, String::from(first), pos);
+                        self.tokens.push(token);
+                    }
+                    '{' => {
+                        let token = Token::from(TokenType::Ocurly, String::from(first), pos);
+                        self.tokens.push(token);
+                    }
+                    '}' => {
+                        let token = Token::from(TokenType::Ccurly, String::from(first), pos);
+                        self.tokens.push(token);
+                    }
+                    ';' => {
+                        let token = Token::from(TokenType::Ccurly, String::from(first), pos);
+                        self.tokens.push(token);
+                    }
+                    ':' => {
+                        let token = Token::from(TokenType::Ccurly, String::from(first), pos);
+                        self.tokens.push(token);
+                    }
+                    _ => panic!("unimplemented punctuation token"),
+                }
+
+                self.cursor += 1;
+            } else if first.is_alphanumeric() {
                 self.parse_alnum_token(pos);
             } else if first.is_ascii_digit() {
-                self.parse_digit_token();
+                self.parse_digit_token(pos);
             } else if first.is_whitespace() {
                 self.cursor += 1;
             }
@@ -53,12 +89,22 @@ impl Lexer {
         while self.valid() && self.character().is_alphanumeric() {
             self.cursor += 1;
         }
-        
+
         let value = String::from(&self.text[start..self.cursor]);
         self.tokens.push(Token::from(TokenType::Ident, value, pos));
     }
 
-    fn parse_digit_token(&mut self) {
-        let first = self.source[self.cursor];
+    fn parse_digit_token(&mut self, pos: Position) {
+        let start = self.cursor;
+        while self.valid() && self.character().is_ascii_digit() {
+            self.cursor += 1;
+        }
+
+        let value = String::from(&self.text[start..self.cursor]);
+        self.tokens.push(Token::from(
+            TokenType::Literal(LiteralType::Number),
+            value,
+            pos,
+        ));
     }
 }

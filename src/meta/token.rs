@@ -37,6 +37,12 @@ impl Display for Position {
 }
 
 #[derive(Debug, Clone)]
+pub enum LiteralType {
+    Number,
+    String,
+}
+
+#[derive(Debug, Clone)]
 pub enum TokenType {
     None,
     Proc,
@@ -47,6 +53,7 @@ pub enum TokenType {
     Semicolon,
     Ocurly,
     Ccurly,
+    Literal(LiteralType),
 }
 
 #[derive(Debug, Clone)]
