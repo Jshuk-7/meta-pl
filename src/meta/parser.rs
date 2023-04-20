@@ -1,7 +1,7 @@
 use std::{fs::File, path::Path};
 
 use crate::{
-    expression::{Var, BinaryOp, Expression},
+    expression::{BinaryOp, Expression, Var},
     lexer::Lexer,
     token::{Token, TokenType},
 };
@@ -151,7 +151,22 @@ impl Parser {
     }
 
     fn parse_identifier(&mut self, token: &Token) -> Option<Expression> {
-        println!("{token}");
+        if let Some(c) = self.lexer.peek_char() {
+            if c == '=' {
+                if let Some(_equal_op) = self.lexer.next() {
+                    let next = self.lexer.next().unwrap();
+
+                    if let Some(expr) = self.parse_expr(&next) {
+                        let new_value = Box::new(expr);
+                        return Some(Expression::AssignStatement {
+                            name: token.value.clone(),
+                            new_value,
+                        });
+                    }
+                }
+            }
+        }
+
         None
     }
 
@@ -173,11 +188,9 @@ impl Parser {
     }
 
     fn parse_binary_op(&mut self, token: &Token) -> Option<Expression> {
-        let mut ex = None;
-
-        if let TokenType::Literal(literal_type) = token.clone().kind {
+        if let TokenType::Literal(literal_type) = token.kind.clone() {
             let start = Some(Expression::Literal(token.clone(), literal_type.clone()));
-            ex = start;
+            let mut ex = start;
 
             let ops = "+-*/=";
             while let Some(potential_op) = self.lexer.peek_char() {
@@ -201,13 +214,15 @@ impl Parser {
                     ex = Some(Expression::BinaryOperation(Box::new(lhs), op, rhs));
                 }
             }
+
+            return ex;
         }
 
-        ex
+        self.parse_literal(token)
     }
 
     fn parse_literal(&mut self, token: &Token) -> Option<Expression> {
-        if let TokenType::Literal(literal_type) = token.clone().kind {
+        if let TokenType::Literal(literal_type) = token.kind.clone() {
             return Some(Expression::Literal(token.clone(), literal_type));
         }
 

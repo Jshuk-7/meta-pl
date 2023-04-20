@@ -4,6 +4,7 @@ ProcDef main {
 	args: []
 	content: [
 		Let(a = Literal('1', Number))
+		Assign(a = Literal('2', Number))
 	]
 }
 

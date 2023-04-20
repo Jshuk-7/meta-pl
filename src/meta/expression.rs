@@ -54,7 +54,7 @@ impl Display for Expression {
                 f.write_fmt(format_args!("Let({name} = {value})"))
             }
             Expression::AssignStatement { name, new_value } => {
-                f.write_fmt(format_args!("Assign({name} = {new_value}"))
+                f.write_fmt(format_args!("Assign({name} = {new_value})"))
             }
             Expression::ProcDef {
                 name,
