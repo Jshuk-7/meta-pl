@@ -1,9 +1,9 @@
 use std::{fs::File, path::Path};
 
 use crate::{
-    expression::{BinaryOp, Expression, Var},
+    expression::{BinaryOp, Expression, Var, Variable},
     lexer::Lexer,
-    token::{Token, TokenType},
+    token::{LiteralType, Token, TokenType},
 };
 
 pub type Program = Vec<Expression>;
@@ -11,6 +11,7 @@ pub type Program = Vec<Expression>;
 pub struct Parser {
     lexer: Lexer,
     program: Program,
+    variables: Vec<Variable>,
 }
 
 impl Parser {
@@ -18,6 +19,7 @@ impl Parser {
         Self {
             lexer,
             program: Program::new(),
+            variables: Vec::new(),
         }
     }
 
@@ -94,9 +96,9 @@ impl Parser {
                             continue;
                         }
 
-                        if next.kind == TokenType::Return {
-                            let rt = self.lexer.next().unwrap();
-                            if let Some(value) = self.parse_expr(&rt) {
+                        if let TokenType::Return = next.kind {
+                            let rv = self.lexer.next().unwrap();
+                            if let Some(value) = self.parse_expr(&rv) {
                                 return_value = Some(Box::new(value));
                             }
 
@@ -106,12 +108,6 @@ impl Parser {
                         if let Some(expr) = self.parse_expr(&next) {
                             statements.push(expr);
                         }
-                    }
-                }
-
-                if let Some(next) = self.lexer.next() {
-                    if next.kind == TokenType::Semicolon {
-                        let _ccurly = self.lexer.next().unwrap();
                     }
                 }
 
@@ -141,9 +137,15 @@ impl Parser {
             let _colon = self.lexer.next().unwrap();
             let type_name = self.lexer.next().unwrap();
 
+            let literal_type = match type_name.value.as_str() {
+                "i32" => LiteralType::Number,
+                "String" => LiteralType::String,
+                _ => LiteralType::None,
+            };
+
             let arg = Var {
                 name: potential_arg.value,
-                kind: type_name.value,
+                kind: literal_type,
             };
 
             args.push(arg);
@@ -151,20 +153,32 @@ impl Parser {
     }
 
     fn parse_identifier(&mut self, token: &Token) -> Option<Expression> {
-        if let Some(c) = self.lexer.peek_char() {
-            if c == '=' {
-                if let Some(_equal_op) = self.lexer.next() {
-                    let next = self.lexer.next().unwrap();
+        if let Some(var) = self
+            .variables
+            .clone()
+            .iter()
+            .find(|&v| v.var.name == token.value)
+        {
+            if let Some(c) = self.lexer.peek_char() {
+                if c == '=' {
+                    if let Some(_equal_op) = self.lexer.next() {
+                        let next = self.lexer.next().unwrap();
 
-                    if let Some(expr) = self.parse_expr(&next) {
-                        let new_value = Box::new(expr);
-                        return Some(Expression::AssignStatement {
-                            name: token.value.clone(),
-                            new_value,
-                        });
+                        if let Some(expr) = self.parse_expr(&next) {
+                            let new_value = Box::new(expr);
+
+                            return Some(Expression::AssignStatement {
+                                value: var.clone(),
+                                new_value,
+                            });
+                        }
                     }
+                } else {
+                    return Some(Expression::Variable(var.clone()));
                 }
             }
+        } else {
+            println!("Error: expected identifier found '{}'", token.value);
         }
 
         None
@@ -176,10 +190,24 @@ impl Parser {
                 let first = self.lexer.next().unwrap();
 
                 if let Some(value) = self.parse_expr(&first) {
-                    return Some(Expression::LetStatement {
-                        name: ident.value,
-                        value: Box::new(value),
-                    });
+                    let name = ident.value;
+                    let value = Box::new(value);
+                    let kind = match first.kind {
+                        TokenType::Literal(lt) => lt,
+                        _ => LiteralType::None,
+                    };
+
+                    let var = Var {
+                        name: name.clone(),
+                        kind,
+                    };
+                    let variable = Variable {
+                        var,
+                        value: value.clone(),
+                    };
+                    self.variables.push(variable);
+
+                    return Some(Expression::LetStatement { name, value });
                 }
             }
         }

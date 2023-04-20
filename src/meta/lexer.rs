@@ -67,6 +67,14 @@ impl Lexer {
         }
     }
 
+    fn drop_line(&mut self) {
+        while self.valid() && self.character() != '\n' {
+            self.advance();
+        }
+
+        self.advance();
+    }
+
     fn parse_string(&mut self, pos: Position) -> Option<Token> {
         self.advance();
 
@@ -172,6 +180,14 @@ impl Iterator for Lexer {
 
         if self.character().is_ascii_whitespace() {
             self.trim();
+        }
+
+        if self.character() == '/' {
+            if let Some(c) = self.peek_char() {
+                if c == '/' {
+                    self.drop_line();
+                }
+            }
         }
 
         let first = self.character();

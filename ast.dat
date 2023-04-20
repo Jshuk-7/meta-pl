@@ -2,9 +2,15 @@ ProcDef main {
 	return_type: None
 	return_value: None
 	args: []
+	content: []
+}
+
+ProcDef hello {
+	return_type: i32
+	return_value: Variable(a: Number, Literal('10', Number))
+	args: []
 	content: [
-		Let(a = Literal('1', Number))
-		Assign(a = Literal('2', Number))
+		Let(a = Literal('10', Number))
 	]
 }
 

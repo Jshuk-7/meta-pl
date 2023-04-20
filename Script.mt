@@ -1,4 +1,8 @@
 proc main() {
-    let a = 1;
-    a = 2;
+    //hello();
+}
+
+proc hello(): i32 {
+    let a = 10;
+    return a;
 }

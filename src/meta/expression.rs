@@ -13,13 +13,13 @@ pub enum BinaryOp {
 #[derive(Debug, Clone)]
 pub struct Var {
     pub name: String,
-    pub kind: String,
+    pub kind: LiteralType,
 }
 
 #[derive(Debug, Clone)]
 pub struct Variable {
     pub var: Var,
-    pub value: String,
+    pub value: Box<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -30,7 +30,7 @@ pub enum Expression {
     },
 
     AssignStatement {
-        name: String,
+        value: Variable,
         new_value: Box<Expression>,
     },
 
@@ -42,7 +42,7 @@ pub enum Expression {
         statements: Vec<Expression>,
     },
 
-    Value(Variable),
+    Variable(Variable),
     BinaryOperation(Box<Expression>, BinaryOp, Box<Expression>),
     Literal(Token, LiteralType),
 }
@@ -53,8 +53,8 @@ impl Display for Expression {
             Expression::LetStatement { name, value } => {
                 f.write_fmt(format_args!("Let({name} = {value})"))
             }
-            Expression::AssignStatement { name, new_value } => {
-                f.write_fmt(format_args!("Assign({name} = {new_value})"))
+            Expression::AssignStatement { value, new_value } => {
+                f.write_fmt(format_args!("Assign({} = {new_value})", value.var.name))
             }
             Expression::ProcDef {
                 name,
@@ -69,7 +69,7 @@ impl Display for Expression {
                 }
                 for arg in args.iter() {
                     arguments
-                        .write_fmt(format_args!("\t\t{}: {},\n", arg.name, arg.kind))
+                        .write_fmt(format_args!("\t\t{}: {:?},\n", arg.name, arg.kind))
                         .unwrap();
                 }
                 if !args.is_empty() {
@@ -107,9 +107,9 @@ impl Display for Expression {
 \tcontent: [{content}]\n}}\n"
                 ))
             }
-            Expression::Value(var) => f.write_fmt(format_args!(
-                "{}({}, {})",
-                var.var.name, var.value, var.var.kind
+            Expression::Variable(var) => f.write_fmt(format_args!(
+                "Variable({}: {:?}, {})",
+                var.var.name, var.var.kind, var.value,
             )),
             Expression::BinaryOperation(lhs, op, rhs) => {
                 f.write_fmt(format_args!("BinaryOperation({lhs}, {op:?}, {rhs})"))
