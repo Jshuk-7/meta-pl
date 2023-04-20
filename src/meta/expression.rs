@@ -11,9 +11,15 @@ pub enum BinaryOp {
 }
 
 #[derive(Debug, Clone)]
-pub struct Argument {
+pub struct Var {
     pub name: String,
-    pub _type: String,
+    pub kind: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Variable {
+    pub var: Var,
+    pub value: String,
 }
 
 #[derive(Debug, Clone)]
@@ -23,14 +29,20 @@ pub enum Expression {
         value: Box<Expression>,
     },
 
+    AssignStatement {
+        name: String,
+        new_value: Box<Expression>,
+    },
+
     ProcDef {
         name: String,
         return_type: Option<String>,
         return_value: Option<Box<Expression>>,
-        args: Vec<Argument>,
+        args: Vec<Var>,
         statements: Vec<Expression>,
     },
 
+    Value(Variable),
     BinaryOperation(Box<Expression>, BinaryOp, Box<Expression>),
     Literal(Token, LiteralType),
 }
@@ -40,6 +52,9 @@ impl Display for Expression {
         match self {
             Expression::LetStatement { name, value } => {
                 f.write_fmt(format_args!("Let({name} = {value})"))
+            }
+            Expression::AssignStatement { name, new_value } => {
+                f.write_fmt(format_args!("Assign({name} = {new_value}"))
             }
             Expression::ProcDef {
                 name,
@@ -54,7 +69,7 @@ impl Display for Expression {
                 }
                 for arg in args.iter() {
                     arguments
-                        .write_fmt(format_args!("\t\t{}: {},\n", arg.name, arg._type))
+                        .write_fmt(format_args!("\t\t{}: {},\n", arg.name, arg.kind))
                         .unwrap();
                 }
                 if !args.is_empty() {
@@ -92,6 +107,10 @@ impl Display for Expression {
 \tcontent: [{content}]\n}}\n"
                 ))
             }
+            Expression::Value(var) => f.write_fmt(format_args!(
+                "{}({}, {})",
+                var.var.name, var.value, var.var.kind
+            )),
             Expression::BinaryOperation(lhs, op, rhs) => {
                 f.write_fmt(format_args!("BinaryOperation({lhs}, {op:?}, {rhs})"))
             }

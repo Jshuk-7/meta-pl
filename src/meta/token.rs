@@ -65,7 +65,7 @@ pub enum TokenType {
 
 #[derive(Debug, Default, Clone)]
 pub struct Token {
-    pub _type: TokenType,
+    pub kind: TokenType,
     pub value: String,
     pub position: Position,
 }
@@ -77,7 +77,7 @@ impl Token {
 
     pub fn from(_type: TokenType, value: String, position: Position) -> Self {
         Self {
-            _type,
+            kind: _type,
             value,
             position,
         }
@@ -88,7 +88,7 @@ impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<{} {:?}> {}",
-            self.position, self._type, self.value
+            self.position, self.kind, self.value
         ))
     }
 }

@@ -1,7 +1,7 @@
 use std::{fs::File, path::Path};
 
 use crate::{
-    expression::{Argument, BinaryOp, Expression},
+    expression::{Var, BinaryOp, Expression},
     lexer::Lexer,
     token::{Token, TokenType},
 };
@@ -41,7 +41,7 @@ impl Parser {
 
     pub fn make_program(&mut self) {
         while let Some(token) = &self.lexer.next() {
-            if let TokenType::Semicolon = token._type {
+            if let TokenType::Semicolon = token.kind {
                 continue;
             }
 
@@ -51,13 +51,12 @@ impl Parser {
         }
 
         self.write_to_file("ast.dat");
-        println!("{:#?}", self.program);
     }
 
     fn parse_expr(&mut self, token: &Token) -> Option<Expression> {
         type TT = TokenType;
 
-        match token._type {
+        match token.kind {
             TT::Proc => self.parse_procedure(),
             TT::Ident => self.parse_identifier(token),
             TT::Let => self.parse_let_expr(),
@@ -80,22 +79,22 @@ impl Parser {
 
                 // statements
                 if let Some(n) = self.lexer.next() {
-                    if n._type == TokenType::Colon {
+                    if n.kind == TokenType::Colon {
                         let rt = self.lexer.next().unwrap();
                         return_type = Some(rt.value);
-                    }
 
-                    let _ocurly = self.lexer.next().unwrap();
+                        let _ocurly = self.lexer.next().unwrap();
+                    }
 
                     type TT = TokenType;
                     while let Some(next) = self.lexer.next() {
-                        match next._type {
-                            TT::Ccurly => break,
-                            TT::Semicolon => continue,
-                            _ => (),
+                        if let TT::Ccurly = next.kind {
+                            break;
+                        } else if let TT::Semicolon = next.kind {
+                            continue;
                         }
 
-                        if next._type == TokenType::Return {
+                        if next.kind == TokenType::Return {
                             let rt = self.lexer.next().unwrap();
                             if let Some(value) = self.parse_expr(&rt) {
                                 return_value = Some(Box::new(value));
@@ -111,7 +110,7 @@ impl Parser {
                 }
 
                 if let Some(next) = self.lexer.next() {
-                    if next._type == TokenType::Semicolon {
+                    if next.kind == TokenType::Semicolon {
                         let _ccurly = self.lexer.next().unwrap();
                     }
                 }
@@ -129,22 +128,22 @@ impl Parser {
         None
     }
 
-    fn parse_args(&mut self, args: &mut Vec<Argument>) {
+    fn parse_args(&mut self, args: &mut Vec<Var>) {
         while let Some(potential_arg) = self.lexer.next() {
-            if potential_arg._type == TokenType::Cparen {
+            if potential_arg.kind == TokenType::Cparen {
                 break;
             }
 
-            if potential_arg._type == TokenType::Comma {
+            if potential_arg.kind == TokenType::Comma {
                 continue;
             }
 
             let _colon = self.lexer.next().unwrap();
             let type_name = self.lexer.next().unwrap();
 
-            let arg = Argument {
+            let arg = Var {
                 name: potential_arg.value,
-                _type: type_name.value,
+                kind: type_name.value,
             };
 
             args.push(arg);
@@ -152,6 +151,7 @@ impl Parser {
     }
 
     fn parse_identifier(&mut self, token: &Token) -> Option<Expression> {
+        println!("{token}");
         None
     }
 
@@ -173,20 +173,20 @@ impl Parser {
     }
 
     fn parse_binary_op(&mut self, token: &Token) -> Option<Expression> {
-        let mut ex;
+        let mut ex = None;
 
-        if let TokenType::Literal(literal_type) = token.clone()._type {
-            let lhs = Some(Expression::Literal(token.clone(), literal_type.clone()));
-            ex = lhs;
+        if let TokenType::Literal(literal_type) = token.clone().kind {
+            let start = Some(Expression::Literal(token.clone(), literal_type.clone()));
+            ex = start;
 
+            let ops = "+-*/=";
             while let Some(potential_op) = self.lexer.peek_char() {
-                let ops = "+-*/=";
                 if !ops.contains(potential_op) {
                     break;
                 }
 
-                let operator = self.lexer.next().unwrap();
-                let op = match operator._type {
+                let op_token = self.lexer.next().unwrap();
+                let op = match op_token.kind {
                     TokenType::Plus => BinaryOp::Plus,
                     TokenType::Minus => BinaryOp::Minus,
                     TokenType::Multiply => BinaryOp::Multiply,
@@ -201,15 +201,13 @@ impl Parser {
                     ex = Some(Expression::BinaryOperation(Box::new(lhs), op, rhs));
                 }
             }
-
-            return ex;
         }
 
-        self.parse_literal(token)
+        ex
     }
 
     fn parse_literal(&mut self, token: &Token) -> Option<Expression> {
-        if let TokenType::Literal(literal_type) = token.clone()._type {
+        if let TokenType::Literal(literal_type) = token.clone().kind {
             return Some(Expression::Literal(token.clone(), literal_type));
         }
 
