@@ -1,10 +1,7 @@
-use meta::lexer::Lexer;
+use meta::parser::Parser;
 
 fn main() {
-    if let Ok(source) = std::fs::read_to_string("Script.mt") {
-        let mut lexer = Lexer::new(source);
-        lexer.make_tokens();
-
-        println!("{:#?}", lexer.get_tokens());
+    if let Some(mut parser) = Parser::from_file("Script.mt") {
+        parser.make_program();
     }
 }

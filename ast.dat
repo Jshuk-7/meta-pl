@@ -1,0 +1,10 @@
+ProcDef main
+return_type: i32
+return_value: Literal ('0', Number)
+args: [
+	b: i32,
+]
+content: [
+	Let (a = Literal ('10', Number))
+	Let (c = Literal ('Hello, World!', String))
+]

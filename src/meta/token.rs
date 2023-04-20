@@ -1,19 +1,15 @@
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Position {
-    filename: String,
-    row: u32,
-    column: u32,
+    pub filename: String,
+    pub row: u32,
+    pub column: u32,
 }
 
 impl Position {
     pub fn new() -> Self {
-        Self {
-            filename: String::new(),
-            row: 0,
-            column: 0,
-        }
+        Self::default()
     }
 
     pub fn from(filename: String, row: u32, column: u32) -> Self {
@@ -36,45 +32,51 @@ impl Display for Position {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub enum LiteralType {
+    #[default]
+    None,
     Number,
     String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub enum TokenType {
+    #[default]
     None,
     Proc,
     Ident,
+    Let,
+    Return,
     Oparen,
     Cparen,
     Colon,
     Semicolon,
     Ocurly,
     Ccurly,
+    Plus,
+    Minus,
+    Multiply,
+    Divide,
+    Equal,
     Literal(LiteralType),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct Token {
-    ty: TokenType,
-    value: String,
-    position: Position,
+    pub _type: TokenType,
+    pub value: String,
+    pub position: Position,
 }
 
 impl Token {
     pub fn new() -> Self {
-        Self {
-            ty: TokenType::None,
-            value: String::new(),
-            position: Position::new(),
-        }
+        Self::default()
     }
 
-    pub fn from(ty: TokenType, value: String, position: Position) -> Self {
+    pub fn from(_type: TokenType, value: String, position: Position) -> Self {
         Self {
-            ty,
+            _type,
             value,
             position,
         }
@@ -85,7 +87,7 @@ impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
             "<{} {:?}> {}",
-            self.position, self.ty, self.value
+            self.position, self._type, self.value
         ))
     }
 }
