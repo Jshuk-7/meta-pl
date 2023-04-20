@@ -39,7 +39,7 @@ impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::LetStatement { name, value } => {
-                f.write_fmt(format_args!("Let ({name} = {value})"))
+                f.write_fmt(format_args!("Let({name} = {value})"))
             }
             Expression::ProcDef {
                 name,
@@ -54,8 +54,11 @@ impl Display for Expression {
                 }
                 for arg in args.iter() {
                     arguments
-                        .write_fmt(format_args!("\t{}: {},\n", arg.name, arg._type))
+                        .write_fmt(format_args!("\t\t{}: {},\n", arg.name, arg._type))
                         .unwrap();
+                }
+                if !args.is_empty() {
+                    arguments.push('\t');
                 }
 
                 let mut content = String::new();
@@ -63,7 +66,12 @@ impl Display for Expression {
                     content.push('\n');
                 }
                 for statement in statements.iter() {
-                    content.write_fmt(format_args!("\t{statement}\n")).unwrap();
+                    content
+                        .write_fmt(format_args!("\t\t{statement}\n"))
+                        .unwrap();
+                }
+                if !statements.is_empty() {
+                    content.push('\t');
                 }
 
                 let mut return_type_str = String::from("None");
@@ -77,18 +85,18 @@ impl Display for Expression {
                 }
 
                 f.write_fmt(format_args!(
-                    "ProcDef {name}
-return_type: {return_type_str}
-return_value: {return_value_str}
-args: [{arguments}]
-content: [{content}]"
+                    "ProcDef {name} {{
+\treturn_type: {return_type_str}
+\treturn_value: {return_value_str}
+\targs: [{arguments}]
+\tcontent: [{content}]\n}}\n"
                 ))
             }
             Expression::BinaryOperation(lhs, op, rhs) => {
-                f.write_fmt(format_args!("BinaryOperation ({lhs}, {op:?}, {rhs})"))
+                f.write_fmt(format_args!("BinaryOperation({lhs}, {op:?}, {rhs})"))
             }
             Expression::Literal(token, _type) => {
-                f.write_fmt(format_args!("Literal ('{}', {_type:?})", token.value))
+                f.write_fmt(format_args!("Literal('{}', {_type:?})", token.value))
             }
         }
     }

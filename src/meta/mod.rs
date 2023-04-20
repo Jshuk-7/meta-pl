@@ -1,4 +1,4 @@
-pub mod lexer;
-pub mod token;
-pub mod parser;
 pub mod expression;
+pub mod lexer;
+pub mod parser;
+pub mod token;

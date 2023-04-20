@@ -1,10 +1,24 @@
-ProcDef main
-return_type: i32
-return_value: Literal ('0', Number)
-args: [
-	b: i32,
-]
-content: [
-	Let (a = Literal ('10', Number))
-	Let (c = Literal ('Hello, World!', String))
-]
+ProcDef main {
+	return_type: i32
+	return_value: Literal('0', Number)
+	args: [
+		x: i32,
+		y: i32,
+	]
+	content: [
+		Let(a = BinaryOperation(BinaryOperation(BinaryOperation(BinaryOperation(Literal('1', Number), Plus, Literal('2', Number)), Minus, Literal('3', Number)), Multiply, Literal('4', Number)), Divide, Literal('5', Number)))
+		Let(c = BinaryOperation(Literal('Hello,', String), Plus, Literal(' World!', String)))
+	]
+}
+
+ProcDef do_work {
+	return_type: i32
+	return_value: BinaryOperation(Literal('1', Number), Plus, Literal('2', Number))
+	args: [
+		a: i32,
+	]
+	content: [
+		Let(b = Literal('10', Number))
+	]
+}
+

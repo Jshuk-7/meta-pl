@@ -105,6 +105,7 @@ impl Lexer {
             '}' => Some(Token::from(TokenType::Ccurly, String::from(token), pos)),
             ':' => Some(Token::from(TokenType::Colon, String::from(token), pos)),
             ';' => Some(Token::from(TokenType::Semicolon, String::from(token), pos)),
+            ',' => Some(Token::from(TokenType::Comma, String::from(token), pos)),
             _ => None,
         }
     }
@@ -127,7 +128,7 @@ impl Lexer {
     fn parse_ident_token(&mut self, pos: Position) -> Option<Token> {
         let start = self.cursor;
         let mut c = self.character();
-        while self.valid() && c.is_alphanumeric() {
+        while self.valid() && c.is_alphanumeric() || c == '_' {
             self.advance();
             c = self.character();
         }
@@ -176,7 +177,7 @@ impl Iterator for Lexer {
         let first = self.character();
         let pos = self.get_cursor_pos();
 
-        let punctuation_tokens = "(){};:";
+        let punctuation_tokens = "(){};:,";
         let operator_tokens = "+-*/=";
 
         if first == '"' {
@@ -185,7 +186,7 @@ impl Iterator for Lexer {
             self.parse_punctuation_token(pos)
         } else if operator_tokens.contains(first) {
             self.parse_operator_token(pos)
-        } else if first.is_ascii_alphabetic() {
+        } else if first.is_ascii_alphabetic() || first == '_' {
             self.parse_ident_token(pos)
         } else if first.is_ascii_digit() {
             self.parse_digit_token(pos)

@@ -52,6 +52,7 @@ pub enum TokenType {
     Cparen,
     Colon,
     Semicolon,
+    Comma,
     Ocurly,
     Ccurly,
     Plus,
