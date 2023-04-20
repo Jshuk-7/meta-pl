@@ -1,16 +1,22 @@
-ProcDef main {
-	return_type: None
-	return_value: None
-	args: []
-	content: []
-}
-
 ProcDef hello {
 	return_type: i32
-	return_value: Variable(a: Number, Literal('10', Number))
-	args: []
+	return_value: Variable(a: Literal('10', Number))
+	args: [
+		x: Number,
+		y: Number,
+	]
 	content: [
 		Let(a = Literal('10', Number))
 	]
+}
+
+ProcDef main {
+	return_type: None
+	return_value: FunCall('hello', args: [
+			x: Literal('1', Number)
+			y: Literal('2', Number)
+		])
+	args: []
+	content: []
 }
 

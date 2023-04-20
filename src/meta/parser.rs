@@ -1,7 +1,7 @@
 use std::{fs::File, path::Path};
 
 use crate::{
-    expression::{BinaryOp, Expression, Var, Variable},
+    expression::{BinaryOp, Expression, ProcDef, VarDef, Variable},
     lexer::Lexer,
     token::{LiteralType, Token, TokenType},
 };
@@ -12,6 +12,7 @@ pub struct Parser {
     lexer: Lexer,
     program: Program,
     variables: Vec<Variable>,
+    functions: Vec<ProcDef>,
 }
 
 impl Parser {
@@ -20,6 +21,7 @@ impl Parser {
             lexer,
             program: Program::new(),
             variables: Vec::new(),
+            functions: Vec::new(),
         }
     }
 
@@ -111,20 +113,24 @@ impl Parser {
                     }
                 }
 
-                return Some(Expression::ProcDef {
+                let proc_def = ProcDef {
                     name: ident.value,
-                    args,
-                    statements,
                     return_type,
                     return_value,
-                });
+                    args,
+                    statements,
+                };
+
+                self.functions.push(proc_def.clone());
+
+                return Some(Expression::ProcDef(proc_def));
             }
         }
 
         None
     }
 
-    fn parse_args(&mut self, args: &mut Vec<Var>) {
+    fn parse_args(&mut self, args: &mut Vec<VarDef>) {
         while let Some(potential_arg) = self.lexer.next() {
             if potential_arg.kind == TokenType::Cparen {
                 break;
@@ -143,7 +149,7 @@ impl Parser {
                 _ => LiteralType::None,
             };
 
-            let arg = Var {
+            let arg = VarDef {
                 name: potential_arg.value,
                 kind: literal_type,
             };
@@ -177,6 +183,40 @@ impl Parser {
                     return Some(Expression::Variable(var.clone()));
                 }
             }
+        } else if let Some(proc_def) = self
+            .functions
+            .clone()
+            .iter()
+            .find(|&f| f.name == token.value)
+        {
+            let mut args = Vec::new();
+
+            if let Some(_oparen) = self.lexer.next() {
+                let mut i = 0;
+                while let Some(potential_arg) = self.lexer.next() {
+                    if potential_arg.kind == TokenType::Cparen {
+                        break;
+                    }
+
+                    if potential_arg.kind == TokenType::Comma {
+                        continue;
+                    }
+
+                    if let Some(value) = self.parse_expr(&potential_arg) {
+                        let var = proc_def.args[i].clone();
+                        let arg = Variable { var, value: Box::new(value) };
+    
+                        args.push(arg);
+
+                        i += 1;
+                    }
+                }
+            }
+
+            return Some(Expression::FunCall {
+                proc_def: proc_def.clone(),
+                args,
+            });
         } else {
             println!("Error: expected identifier found '{}'", token.value);
         }
@@ -197,7 +237,7 @@ impl Parser {
                         _ => LiteralType::None,
                     };
 
-                    let var = Var {
+                    let var = VarDef {
                         name: name.clone(),
                         kind,
                     };

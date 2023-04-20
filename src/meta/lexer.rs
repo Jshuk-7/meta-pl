@@ -180,6 +180,10 @@ impl Iterator for Lexer {
 
         if self.character().is_ascii_whitespace() {
             self.trim();
+
+            if !self.valid() {
+                return None;
+            }
         }
 
         if self.character() == '/' {
