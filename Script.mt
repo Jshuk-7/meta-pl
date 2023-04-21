@@ -1,8 +1,23 @@
-proc hello(x: i32, y: i32): i32 {
-    let a = 10;
+proc char_test(): char {
+    let a: char = 'a';
     return a;
 }
 
-proc main() {
-    return hello(1, 2);
+proc bool_test(): bool {
+    let b = false;
+    return b;
+}
+
+proc i32_test(): i32 {
+    let c = 1;
+    return c;
+}
+
+proc string_test(): String {
+    let d = "Hello";
+    return d;
+}
+
+proc main(): i32 {
+    return 0;
 }

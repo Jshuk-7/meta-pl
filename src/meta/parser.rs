@@ -61,22 +61,22 @@ impl Parser {
         type TT = TokenType;
 
         match token.kind {
-            TT::Proc => self.parse_procedure(),
-            TT::Ident => self.parse_identifier(token),
-            TT::Let => self.parse_let_expr(),
-            TT::Literal(_) => self.parse_binary_op(token),
+            TT::Proc => self.visit_procedure_def(),
+            TT::Ident => self.visit_identifier(token),
+            TT::Let => self.visit_let_statement(),
+            TT::Literal(_) => self.visit_binary_op(token),
             _ => None,
         }
     }
 
-    fn parse_procedure(&mut self) -> Option<Expression> {
+    fn visit_procedure_def(&mut self) -> Option<Expression> {
         if let Some(ident) = self.lexer.next() {
             let mut args = Vec::new();
             let mut statements = Vec::new();
 
             if let Some(_oparen) = self.lexer.next() {
                 // args
-                self.parse_args(&mut args);
+                self.visit_args(&mut args);
 
                 let mut return_type = None;
                 let mut return_value = None;
@@ -130,7 +130,7 @@ impl Parser {
         None
     }
 
-    fn parse_args(&mut self, args: &mut Vec<VarDef>) {
+    fn visit_args(&mut self, args: &mut Vec<VarDef>) {
         while let Some(potential_arg) = self.lexer.next() {
             if potential_arg.kind == TokenType::Cparen {
                 break;
@@ -144,6 +144,7 @@ impl Parser {
             let type_name = self.lexer.next().unwrap();
 
             let literal_type = match type_name.value.as_str() {
+                "char" => LiteralType::Char,
                 "i32" => LiteralType::Number,
                 "String" => LiteralType::String,
                 _ => LiteralType::None,
@@ -158,7 +159,7 @@ impl Parser {
         }
     }
 
-    fn parse_identifier(&mut self, token: &Token) -> Option<Expression> {
+    fn visit_identifier(&mut self, token: &Token) -> Option<Expression> {
         if let Some(var) = self
             .variables
             .clone()
@@ -196,17 +197,15 @@ impl Parser {
                 while let Some(potential_arg) = self.lexer.next() {
                     if potential_arg.kind == TokenType::Cparen {
                         break;
-                    }
-
-                    if potential_arg.kind == TokenType::Comma {
+                    } else if potential_arg.kind == TokenType::Comma {
                         continue;
                     }
 
                     if let Some(value) = self.parse_expr(&potential_arg) {
                         let var = proc_def.args[i].clone();
-                        let arg = Variable { var, value: Box::new(value) };
-    
-                        args.push(arg);
+                        let variable = self.create_variable(var.name, var.kind, Box::new(value));
+
+                        args.push(variable);
 
                         i += 1;
                     }
@@ -224,8 +223,10 @@ impl Parser {
         None
     }
 
-    fn parse_let_expr(&mut self) -> Option<Expression> {
+    fn visit_let_statement(&mut self) -> Option<Expression> {
         if let Some(ident) = self.lexer.next() {
+            // TODO: inline type hints
+            println!("{}", self.lexer.peek_char().unwrap());
             if let Some(_equal_op) = self.lexer.next() {
                 let first = self.lexer.next().unwrap();
 
@@ -237,14 +238,7 @@ impl Parser {
                         _ => LiteralType::None,
                     };
 
-                    let var = VarDef {
-                        name: name.clone(),
-                        kind,
-                    };
-                    let variable = Variable {
-                        var,
-                        value: value.clone(),
-                    };
+                    let variable = self.create_variable(name.clone(), kind, value.clone());
                     self.variables.push(variable);
 
                     return Some(Expression::LetStatement { name, value });
@@ -255,7 +249,7 @@ impl Parser {
         None
     }
 
-    fn parse_binary_op(&mut self, token: &Token) -> Option<Expression> {
+    fn visit_binary_op(&mut self, token: &Token) -> Option<Expression> {
         if let TokenType::Literal(literal_type) = token.kind.clone() {
             let start = Some(Expression::Literal(token.clone(), literal_type.clone()));
             let mut ex = start;
@@ -267,13 +261,7 @@ impl Parser {
                 }
 
                 let op_token = self.lexer.next().unwrap();
-                let op = match op_token.kind {
-                    TokenType::Plus => BinaryOp::Plus,
-                    TokenType::Minus => BinaryOp::Minus,
-                    TokenType::Multiply => BinaryOp::Multiply,
-                    TokenType::Divide => BinaryOp::Divide,
-                    _ => BinaryOp::Plus,
-                };
+                let op = self.token_type_to_binary_op(op_token.kind);
 
                 let next = self.lexer.next().unwrap();
                 let rhs = Box::new(Expression::Literal(next, literal_type.clone()));
@@ -286,15 +274,32 @@ impl Parser {
             return ex;
         }
 
-        self.parse_literal(token)
+        self.visit_literal(token)
     }
 
-    fn parse_literal(&mut self, token: &Token) -> Option<Expression> {
+    fn visit_literal(&mut self, token: &Token) -> Option<Expression> {
         if let TokenType::Literal(literal_type) = token.kind.clone() {
             return Some(Expression::Literal(token.clone(), literal_type));
         }
 
         None
+    }
+
+    fn create_variable(&self, name: String, kind: LiteralType, value: Box<Expression>) -> Variable {
+        Variable {
+            var: VarDef { name, kind },
+            value,
+        }
+    }
+
+    fn token_type_to_binary_op(&self, kind: TokenType) -> BinaryOp {
+        match kind {
+            TokenType::Plus => BinaryOp::Plus,
+            TokenType::Minus => BinaryOp::Minus,
+            TokenType::Multiply => BinaryOp::Multiply,
+            TokenType::Divide => BinaryOp::Divide,
+            _ => BinaryOp::Plus,
+        }
     }
 
     fn write_to_file<P: AsRef<Path>>(&self, path: P) {

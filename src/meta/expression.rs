@@ -58,10 +58,11 @@ impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::LetStatement { name, value } => {
-                f.write_fmt(format_args!("Let({name} = {value})"))
+                f.write_fmt(format_args!("Let('{name}' = {value})"))
             }
             Expression::AssignStatement { value, new_value } => {
-                f.write_fmt(format_args!("Assign({} = {new_value})", value.var.name))
+                let name = value.var.name.clone();
+                f.write_fmt(format_args!("Assign('{name}' = {new_value})"))
             }
             Expression::FunCall { proc_def, args } => {
                 let mut arguments = String::new();
@@ -78,10 +79,8 @@ impl Display for Expression {
                     arguments.push_str("\t\t");
                 }
 
-                f.write_fmt(format_args!(
-                    "FunCall('{}', args: [{arguments}])",
-                    proc_def.name
-                ))
+                let name = proc_def.name.clone();
+                f.write_fmt(format_args!("FunCall('{name}', args: [{arguments}])"))
             }
             Expression::ProcDef(proc_def) => {
                 let mut arguments = String::new();

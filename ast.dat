@@ -1,21 +1,42 @@
-ProcDef hello {
-	return_type: i32
-	return_value: Variable(a: Literal('10', Number))
-	args: [
-		x: Number,
-		y: Number,
-	]
+ProcDef char_test {
+	return_type: char
+	return_value: None
+	args: []
 	content: [
-		Let(a = Literal('10', Number))
+		Literal('a', Char)
+	]
+}
+
+ProcDef bool_test {
+	return_type: bool
+	return_value: Variable(b: Literal('false', Bool))
+	args: []
+	content: [
+		Let('b' = Literal('false', Bool))
+	]
+}
+
+ProcDef i32_test {
+	return_type: i32
+	return_value: Variable(c: Literal('1', Number))
+	args: []
+	content: [
+		Let('c' = Literal('1', Number))
+	]
+}
+
+ProcDef string_test {
+	return_type: String
+	return_value: Variable(d: Literal('Hello', String))
+	args: []
+	content: [
+		Let('d' = Literal('Hello', String))
 	]
 }
 
 ProcDef main {
-	return_type: None
-	return_value: FunCall('hello', args: [
-			x: Literal('1', Number)
-			y: Literal('2', Number)
-		])
+	return_type: i32
+	return_value: Literal('0', Number)
 	args: []
 	content: []
 }

@@ -101,6 +101,24 @@ impl Lexer {
         token
     }
 
+    fn parse_char(&mut self, pos: Position) -> Option<Token> {
+        self.advance();
+
+        let c = self.character();
+
+        let token = Some(Token::from(
+            TokenType::Literal(LiteralType::Char),
+            String::from(c),
+            pos,
+        ));
+
+        self.advance();
+
+        self.advance();
+
+        token
+    }
+
     fn parse_punctuation_token(&mut self, pos: Position) -> Option<Token> {
         let token = self.character();
 
@@ -147,6 +165,7 @@ impl Lexer {
             "proc" => TokenType::Proc,
             "let" => TokenType::Let,
             "return" => TokenType::Return,
+            "true" | "false" => TokenType::Literal(LiteralType::Bool),
             _ => TokenType::Ident,
         };
 
@@ -202,6 +221,8 @@ impl Iterator for Lexer {
 
         if first == '"' {
             self.parse_string(pos)
+        } else if first == '\'' {
+            self.parse_char(pos)
         } else if punctuation_tokens.contains(first) {
             self.parse_punctuation_token(pos)
         } else if operator_tokens.contains(first) {
