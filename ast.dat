@@ -1,21 +1,18 @@
-ProcDef main {
-	return_type: i32
-	return_value: Variable(a: Literal('2', Number))
+ProcDef get_string {
+	return_type: String
+	return_value: Variable('value': BinaryOperation(Literal('Hello,', String), Plus, Literal(' World!', String)))
 	args: []
 	content: [
-		Let('a' = Literal('1', Number))
-		Assign('a' = Literal('2', Number))
+		Let('value' = BinaryOperation(Literal('Hello,', String), Plus, Literal(' World!', String)))
 	]
 }
 
-ProcDef hello {
-	return_type: i32
-	return_value: Variable(res: Variable(a: Literal('2', Number)))
+ProcDef main {
+	return_type: None
+	return_value: None
 	args: []
 	content: [
-		Let('a' = Literal('1', Number))
-		Let('b' = Literal('2', Number))
-		Let('res' = Variable(a: Literal('2', Number)))
+		Let('str' = FunCall('get_string', args: []))
 	]
 }
 

@@ -206,7 +206,7 @@ impl Parser {
                         }
                     }
                 } else {
-                    return Some(Expression::Variable(var.clone()));
+                    return self.visit_binary_op(Some(Expression::Variable(var.clone())));
                 }
             }
         } else if let Some(proc_def) = self
@@ -237,12 +237,12 @@ impl Parser {
                 }
             }
 
-            return Some(Expression::FunCall {
+            return self.visit_binary_op(Some(Expression::FunCall {
                 proc_def: proc_def.clone(),
                 args,
-            });
+            }));
         } else {
-            println!("Error: expected identifier found '{}'", token.value);
+            println!("<{}> Error: expected identifier found '{}'", token.position, token.value);
         }
 
         None
@@ -269,6 +269,19 @@ impl Parser {
                     let value = Box::new(value);
                     let kind = match first.kind {
                         TokenType::Literal(lt) => lt,
+                        TokenType::Ident => {
+                            if let Some(var) = self.variables.iter().find(|&v| v.var.name == first.value) {
+                                var.var.kind.clone()
+                            } else if let Some(proc_def) = self.functions.iter().find(|&f| f.name == first.value) {
+                                if let Some(rt) = proc_def.return_type.clone() {
+                                    self.literal_type_from_string(rt)
+                                } else {
+                                    LiteralType::None
+                                }
+                            } else {
+                                LiteralType::None
+                            }
+                        }
                         _ => LiteralType::None,
                     };
 
@@ -312,6 +325,14 @@ impl Parser {
     
                 if let Some(lhs) = ex {
                     ex = Some(Expression::BinaryOperation(Box::new(lhs), op, rhs));
+                }
+            } else if let TokenType::Ident = next.kind.clone() {
+                if let Some(var) = self.variables.iter().find(|&v| v.var.name == next.value) {
+                    let rhs = Box::new(Expression::Variable(var.clone()));
+
+                    if let Some(lhs) = ex {
+                        ex = Some(Expression::BinaryOperation(Box::new(lhs), op, rhs));
+                    }
                 }
             }
         }

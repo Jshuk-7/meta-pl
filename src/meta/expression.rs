@@ -129,7 +129,7 @@ impl Display for Expression {
                 ))
             }
             Expression::Variable(var) => {
-                f.write_fmt(format_args!("Variable({}: {})", var.var.name, var.value,))
+                f.write_fmt(format_args!("Variable('{}': {})", var.var.name, var.value,))
             }
             Expression::BinaryOperation(lhs, op, rhs) => {
                 f.write_fmt(format_args!("BinaryOperation({lhs}, {op:?}, {rhs})"))
