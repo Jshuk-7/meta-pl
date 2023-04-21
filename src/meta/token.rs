@@ -17,6 +17,7 @@ pub enum TokenType {
     Proc,
     Ident,
     Let,
+    Struct,
     Return,
     Oparen,
     Cparen,

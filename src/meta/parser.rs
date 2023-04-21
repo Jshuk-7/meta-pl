@@ -1,7 +1,7 @@
 use std::{fs::File, path::Path};
 
 use crate::{
-    expression::{BinaryOp, Expression, ProcDef, VarDef, Variable},
+    expression::{BinaryOp, Expression, ProcDef, StructDef, VarDef, Variable},
     lexer::Lexer,
     token::{LiteralType, Token, TokenType},
 };
@@ -58,16 +58,8 @@ impl Parser {
     fn parse_expr(&mut self, token: &Token) -> Option<Expression> {
         type TT = TokenType;
 
-        if self
-            .variables
-            .iter()
-            .find(|&v| v.var.name == token.value)
-            .is_some()
-            || self
-                .functions
-                .iter()
-                .find(|&f| f.name == token.value)
-                .is_some()
+        if self.variables.iter().any(|v| v.var.name == token.value)
+            || self.functions.iter().any(|f| f.name == token.value)
         {
             if let Some(ident) = self.visit_identifier(token) {
                 return self.visit_binary_op(Some(ident));
@@ -78,6 +70,7 @@ impl Parser {
             TT::Proc => self.visit_procedure_def(),
             TT::Ident => self.visit_identifier(token),
             TT::Let => self.visit_let_statement(),
+            TT::Struct => self.visit_struct_def(),
             TT::Literal(lt) => {
                 let literal = Some(Expression::Literal(token.clone(), lt));
                 self.visit_binary_op(literal)
@@ -242,7 +235,10 @@ impl Parser {
                 args,
             }));
         } else {
-            println!("<{}> Error: expected identifier found '{}'", token.position, token.value);
+            println!(
+                "<{}> Error: expected identifier found '{}'",
+                token.position, token.value
+            );
         }
 
         None
@@ -270,9 +266,13 @@ impl Parser {
                     let kind = match first.kind {
                         TokenType::Literal(lt) => lt,
                         TokenType::Ident => {
-                            if let Some(var) = self.variables.iter().find(|&v| v.var.name == first.value) {
+                            if let Some(var) =
+                                self.variables.iter().find(|&v| v.var.name == first.value)
+                            {
                                 var.var.kind.clone()
-                            } else if let Some(proc_def) = self.functions.iter().find(|&f| f.name == first.value) {
+                            } else if let Some(proc_def) =
+                                self.functions.iter().find(|&f| f.name == first.value)
+                            {
                                 if let Some(rt) = proc_def.return_type.clone() {
                                     self.literal_type_from_string(rt)
                                 } else {
@@ -307,6 +307,59 @@ impl Parser {
         None
     }
 
+    fn visit_struct_def(&mut self) -> Option<Expression> {
+        if let Some(ident) = self.lexer.next() {
+            if let Some(_ocurly) = self.lexer.next() {
+                let mut fields = Vec::new();
+
+                while self.lexer.valid() {
+                    if let Some(field) = self.lexer.next() {
+                        if let TokenType::Ccurly = field.kind {
+                            break;
+                        } else if field.kind != TokenType::Ident {
+                            println!(
+                                "<{}> Error: expected identifier found '{:?}'",
+                                field.position, field.kind
+                            );
+                            break;
+                        }
+
+                        let _colon = self.lexer.next().unwrap();
+
+                        if let Some(type_name) = self.lexer.next() {
+                            let literal_type = self.literal_type_from_string(type_name.value);
+                            let var = VarDef {
+                                name: field.value,
+                                kind: literal_type,
+                            };
+
+                            fields.push(var);
+                        }
+
+                        if self.lexer.character() == ',' {
+                            let _comma = self.lexer.next().unwrap();
+                        }
+                    }
+                }
+
+                if let Some(c) = self.lexer.peek_char() {
+                    if c == '}' {
+                        let _ccurly = self.lexer.next().unwrap();
+                    }
+                }
+
+                let struct_def = StructDef {
+                    type_name: ident.value,
+                    fields,
+                };
+
+                return Some(Expression::StructDef(struct_def));
+            }
+        }
+
+        None
+    }
+
     fn visit_binary_op(&mut self, expr: Option<Expression>) -> Option<Expression> {
         let mut ex = expr;
 
@@ -322,7 +375,7 @@ impl Parser {
             let next = self.lexer.next().unwrap();
             if let TokenType::Literal(lt) = next.kind.clone() {
                 let rhs = Box::new(Expression::Literal(next, lt));
-    
+
                 if let Some(lhs) = ex {
                     ex = Some(Expression::BinaryOperation(Box::new(lhs), op, rhs));
                 }
@@ -337,7 +390,7 @@ impl Parser {
             }
         }
 
-        return ex;
+        ex
     }
 
     fn create_variable(&self, name: String, kind: LiteralType, value: Box<Expression>) -> Variable {

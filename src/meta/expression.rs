@@ -32,6 +32,12 @@ pub struct ProcDef {
 }
 
 #[derive(Debug, Clone)]
+pub struct StructDef {
+    pub type_name: String,
+    pub fields: Vec<VarDef>,
+}
+
+#[derive(Debug, Clone)]
 pub enum Expression {
     LetStatement {
         name: String,
@@ -50,6 +56,7 @@ pub enum Expression {
 
     ProcDef(ProcDef),
     Variable(Variable),
+    StructDef(StructDef),
     BinaryOperation(Box<Expression>, BinaryOp, Box<Expression>),
     Literal(Token, LiteralType),
 }
@@ -58,11 +65,11 @@ impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expression::LetStatement { name, value } => {
-                f.write_fmt(format_args!("Let('{name}' = {value})"))
+                f.write_fmt(format_args!("Let('{name}': {value})"))
             }
             Expression::AssignStatement { value, new_value } => {
                 let name = value.var.name.clone();
-                f.write_fmt(format_args!("Assign('{name}' = {new_value})"))
+                f.write_fmt(format_args!("Assign('{name}': {new_value})"))
             }
             Expression::FunCall { proc_def, args } => {
                 let mut arguments = String::new();
@@ -80,7 +87,7 @@ impl Display for Expression {
                 }
 
                 let name = proc_def.name.clone();
-                f.write_fmt(format_args!("FunCall('{name}', args: [{arguments}])"))
+                f.write_fmt(format_args!("FunCall('{name}': args: [{arguments}])"))
             }
             Expression::ProcDef(proc_def) => {
                 let mut arguments = String::new();
@@ -131,11 +138,27 @@ impl Display for Expression {
             Expression::Variable(var) => {
                 f.write_fmt(format_args!("Variable('{}': {})", var.var.name, var.value,))
             }
+            Expression::StructDef(struct_def) => {
+                let mut fields = String::new();
+                if !struct_def.fields.is_empty() {
+                    fields.push('\n');
+                }
+                for field in struct_def.fields.iter() {
+                    fields
+                        .write_fmt(format_args!("\t{}: {:?},\n", field.name, field.kind))
+                        .unwrap();
+                }
+
+                f.write_fmt(format_args!(
+                    "StructDef('{}': fields: [{fields}])\n",
+                    struct_def.type_name
+                ))
+            }
             Expression::BinaryOperation(lhs, op, rhs) => {
                 f.write_fmt(format_args!("BinaryOperation({lhs}, {op:?}, {rhs})"))
             }
             Expression::Literal(token, _type) => {
-                f.write_fmt(format_args!("Literal('{}', {_type:?})", token.value))
+                f.write_fmt(format_args!("Literal('{}': {_type:?})", token.value))
             }
         }
     }

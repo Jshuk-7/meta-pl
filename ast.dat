@@ -1,18 +1,12 @@
-ProcDef get_string {
-	return_type: String
-	return_value: Variable('value': BinaryOperation(Literal('Hello,', String), Plus, Literal(' World!', String)))
-	args: []
-	content: [
-		Let('value' = BinaryOperation(Literal('Hello,', String), Plus, Literal(' World!', String)))
-	]
-}
+StructDef('Point': fields: [
+	x: Number,
+	y: Number,
+])
 
 ProcDef main {
 	return_type: None
 	return_value: None
 	args: []
-	content: [
-		Let('str' = FunCall('get_string', args: []))
-	]
+	content: []
 }
 

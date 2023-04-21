@@ -1,8 +1,8 @@
-proc get_string(): String {
-    let value: String = "Hello," + " World!";
-    return value;
+struct Point {
+    x: i32,
+    y: i32,
 }
 
 proc main() {
-    let str: String = get_string();
+    //let point: Point = Point{ x: 0, y: 0 };
 }
