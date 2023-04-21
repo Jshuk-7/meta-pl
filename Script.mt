@@ -4,5 +4,5 @@ struct Point {
 }
 
 proc main() {
-    //let point: Point = Point{ x: 0, y: 0 };
+    let point: Point = Point{ x: 0, y: 0 };
 }

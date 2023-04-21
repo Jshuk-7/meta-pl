@@ -1,8 +1,12 @@
 use std::{fs::File, path::Path};
 
 use crate::{
-    expression::{BinaryOp, Expression, ProcDef, StructDef, VarDef, Variable},
+    expression::Expression,
     lexer::Lexer,
+    nodes::{
+        AssignNode, BinaryOp, BinaryOpNode, FunCallNode, LetNode, ProcDefNode, StructDefNode,
+        VarDefNode, VariableNode,
+    },
     token::{LiteralType, Token, TokenType},
 };
 
@@ -11,8 +15,8 @@ pub type Program = Vec<Expression>;
 pub struct Parser {
     lexer: Lexer,
     program: Program,
-    variables: Vec<Variable>,
-    functions: Vec<ProcDef>,
+    variables: Vec<VariableNode>,
+    functions: Vec<ProcDefNode>,
 }
 
 impl Parser {
@@ -126,7 +130,7 @@ impl Parser {
                     }
                 }
 
-                let proc_def = ProcDef {
+                let proc_def = ProcDefNode {
                     name: ident.value,
                     return_type,
                     return_value,
@@ -143,7 +147,7 @@ impl Parser {
         None
     }
 
-    fn visit_args(&mut self, args: &mut Vec<VarDef>) {
+    fn visit_args(&mut self, args: &mut Vec<VarDefNode>) {
         while let Some(ident) = self.lexer.next() {
             if let TokenType::Cparen = ident.kind {
                 break;
@@ -156,7 +160,7 @@ impl Parser {
 
             let kind = self.literal_type_from_string(type_name.value);
 
-            let arg = VarDef {
+            let arg = VarDefNode {
                 name: ident.value,
                 kind,
             };
@@ -192,10 +196,12 @@ impl Parser {
                                 self.variables.insert(pos, variable.clone());
                             }
 
-                            return Some(Expression::AssignStatement {
+                            let assign_node = AssignNode {
                                 value: variable,
                                 new_value,
-                            });
+                            };
+
+                            return Some(Expression::AssignStatement(assign_node));
                         }
                     }
                 } else {
@@ -230,10 +236,12 @@ impl Parser {
                 }
             }
 
-            return self.visit_binary_op(Some(Expression::FunCall {
+            let fun_call_node = FunCallNode {
                 proc_def: proc_def.clone(),
                 args,
-            }));
+            };
+
+            return self.visit_binary_op(Some(Expression::FunCall(fun_call_node)));
         } else {
             println!(
                 "<{}> Error: expected identifier found '{}'",
@@ -299,7 +307,9 @@ impl Parser {
                     let variable = self.create_variable(name.clone(), kind, value.clone());
                     self.variables.push(variable);
 
-                    return Some(Expression::LetStatement { name, value });
+                    let let_node = LetNode { name, value };
+
+                    return Some(Expression::LetStatement(let_node));
                 }
             }
         }
@@ -328,7 +338,7 @@ impl Parser {
 
                         if let Some(type_name) = self.lexer.next() {
                             let literal_type = self.literal_type_from_string(type_name.value);
-                            let var = VarDef {
+                            let var = VarDefNode {
                                 name: field.value,
                                 kind: literal_type,
                             };
@@ -348,7 +358,7 @@ impl Parser {
                     }
                 }
 
-                let struct_def = StructDef {
+                let struct_def = StructDefNode {
                     type_name: ident.value,
                     fields,
                 };
@@ -377,14 +387,26 @@ impl Parser {
                 let rhs = Box::new(Expression::Literal(next, lt));
 
                 if let Some(lhs) = ex {
-                    ex = Some(Expression::BinaryOperation(Box::new(lhs), op, rhs));
+                    let binary_op_node = BinaryOpNode {
+                        lhs: Box::new(lhs),
+                        op,
+                        rhs,
+                    };
+
+                    ex = Some(Expression::BinaryOp(binary_op_node));
                 }
             } else if let TokenType::Ident = next.kind.clone() {
                 if let Some(var) = self.variables.iter().find(|&v| v.var.name == next.value) {
                     let rhs = Box::new(Expression::Variable(var.clone()));
 
                     if let Some(lhs) = ex {
-                        ex = Some(Expression::BinaryOperation(Box::new(lhs), op, rhs));
+                        let binary_op = BinaryOpNode {
+                            lhs: Box::new(lhs),
+                            op,
+                            rhs,
+                        };
+
+                        ex = Some(Expression::BinaryOp(binary_op));
                     }
                 }
             }
@@ -393,9 +415,14 @@ impl Parser {
         ex
     }
 
-    fn create_variable(&self, name: String, kind: LiteralType, value: Box<Expression>) -> Variable {
-        Variable {
-            var: VarDef { name, kind },
+    fn create_variable(
+        &self,
+        name: String,
+        kind: LiteralType,
+        value: Box<Expression>,
+    ) -> VariableNode {
+        VariableNode {
+            var: VarDefNode { name, kind },
             value,
         }
     }

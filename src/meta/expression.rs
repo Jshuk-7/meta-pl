@@ -1,92 +1,50 @@
 use std::fmt::{Display, Write};
 
-use crate::token::{LiteralType, Token};
-
-#[derive(Debug, Clone)]
-pub enum BinaryOp {
-    Plus,
-    Minus,
-    Multiply,
-    Divide,
-}
-
-#[derive(Debug, Clone)]
-pub struct VarDef {
-    pub name: String,
-    pub kind: LiteralType,
-}
-
-#[derive(Debug, Clone)]
-pub struct Variable {
-    pub var: VarDef,
-    pub value: Box<Expression>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ProcDef {
-    pub name: String,
-    pub return_type: Option<String>,
-    pub return_value: Option<Box<Expression>>,
-    pub args: Vec<VarDef>,
-    pub statements: Vec<Expression>,
-}
-
-#[derive(Debug, Clone)]
-pub struct StructDef {
-    pub type_name: String,
-    pub fields: Vec<VarDef>,
-}
+use crate::{
+    nodes::{
+        AssignNode, BinaryOpNode, FunCallNode, LetNode, ProcDefNode, StructDefNode, VariableNode,
+    },
+    token::{LiteralType, Token},
+};
 
 #[derive(Debug, Clone)]
 pub enum Expression {
-    LetStatement {
-        name: String,
-        value: Box<Expression>,
-    },
-
-    AssignStatement {
-        value: Variable,
-        new_value: Box<Expression>,
-    },
-
-    FunCall {
-        proc_def: ProcDef,
-        args: Vec<Variable>,
-    },
-
-    ProcDef(ProcDef),
-    Variable(Variable),
-    StructDef(StructDef),
-    BinaryOperation(Box<Expression>, BinaryOp, Box<Expression>),
+    LetStatement(LetNode),
+    AssignStatement(AssignNode),
+    ProcDef(ProcDefNode),
+    FunCall(FunCallNode),
+    Variable(VariableNode),
+    StructDef(StructDefNode),
+    BinaryOp(BinaryOpNode),
     Literal(Token, LiteralType),
 }
 
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::LetStatement { name, value } => {
-                f.write_fmt(format_args!("Let('{name}': {value})"))
+            Expression::LetStatement(let_node) => {
+                f.write_fmt(format_args!("Let('{}': {})", let_node.name, let_node.value))
             }
-            Expression::AssignStatement { value, new_value } => {
-                let name = value.var.name.clone();
-                f.write_fmt(format_args!("Assign('{name}': {new_value})"))
+            Expression::AssignStatement(assign_node) => {
+                let name = assign_node.value.var.name.clone();
+                f.write_fmt(format_args!("Assign('{name}': {})", assign_node.new_value))
             }
-            Expression::FunCall { proc_def, args } => {
+            Expression::FunCall(fun_call_node) => {
                 let mut arguments = String::new();
 
-                if !args.is_empty() {
+                if !fun_call_node.args.is_empty() {
                     arguments.push('\n');
                 }
-                for arg in args.iter() {
+                for arg in fun_call_node.args.iter() {
                     arguments
                         .write_fmt(format_args!("\t\t\t{}: {}\n", arg.var.name, arg.value))
                         .unwrap();
                 }
-                if !args.is_empty() {
+                if !fun_call_node.args.is_empty() {
                     arguments.push_str("\t\t");
                 }
 
-                let name = proc_def.name.clone();
+                let name = fun_call_node.proc_def.name.clone();
                 f.write_fmt(format_args!("FunCall('{name}': args: [{arguments}])"))
             }
             Expression::ProcDef(proc_def) => {
@@ -127,11 +85,11 @@ impl Display for Expression {
                 }
 
                 f.write_fmt(format_args!(
-                    "ProcDef {} {{
+                    "ProcDef('{}':
 \treturn_type: {return_type_str}
 \treturn_value: {return_value_str}
 \targs: [{arguments}]
-\tcontent: [{content}]\n}}\n",
+\tcontent: [{content}]\n)\n",
                     proc_def.name
                 ))
             }
@@ -154,9 +112,10 @@ impl Display for Expression {
                     struct_def.type_name
                 ))
             }
-            Expression::BinaryOperation(lhs, op, rhs) => {
-                f.write_fmt(format_args!("BinaryOperation({lhs}, {op:?}, {rhs})"))
-            }
+            Expression::BinaryOp(binary_op_node) => f.write_fmt(format_args!(
+                "BinaryOp({}, {:?}, {})",
+                binary_op_node.lhs, binary_op_node.op, binary_op_node.rhs
+            )),
             Expression::Literal(token, _type) => {
                 f.write_fmt(format_args!("Literal('{}': {_type:?})", token.value))
             }

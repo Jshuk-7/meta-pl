@@ -3,10 +3,13 @@ StructDef('Point': fields: [
 	y: Number,
 ])
 
-ProcDef main {
+ProcDef('main':
 	return_type: None
 	return_value: None
 	args: []
-	content: []
-}
+	content: [
+		Literal('0': Number)
+		Literal('0': Number)
+	]
+)
 
