@@ -14,9 +14,10 @@ pub enum LiteralType {
 pub enum TokenType {
     #[default]
     None,
+    If,
+    Let,
     Proc,
     Ident,
-    Let,
     Struct,
     Return,
     Oparen,
@@ -30,7 +31,14 @@ pub enum TokenType {
     Minus,
     Multiply,
     Divide,
-    Equal,
+    Assign,
+    Eq,
+    Ne,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+    Neg,
     Literal(LiteralType),
 }
 

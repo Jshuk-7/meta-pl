@@ -1,8 +1,12 @@
-struct Point {
-    x: i32,
-    y: i32,
+proc print(msg: String) {
+    
 }
 
 proc main() {
-    let point: Point = Point{ x: 0, y: 0 };
+    if 1 == 2 {
+        let a = 10;
+    }
+
+    let name = "Jackson";
+    print(name);
 }

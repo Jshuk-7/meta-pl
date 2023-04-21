@@ -139,6 +139,12 @@ impl Lexer {
     fn parse_operator_token(&mut self, pos: Position) -> Option<Token> {
         let op = self.character();
 
+        let next = if let Some(c) = self.peek_char() {
+            c
+        } else {
+            0 as char
+        };
+
         self.advance();
 
         match op {
@@ -146,7 +152,38 @@ impl Lexer {
             '-' => Some(Token::from(TokenType::Minus, String::from(op), pos)),
             '*' => Some(Token::from(TokenType::Multiply, String::from(op), pos)),
             '/' => Some(Token::from(TokenType::Divide, String::from(op), pos)),
-            '=' => Some(Token::from(TokenType::Equal, String::from(op), pos)),
+            '=' => {
+                if next == '=' {
+                    self.advance();
+                    Some(Token::from(TokenType::Eq, String::from("=="), pos))
+                } else {
+                    Some(Token::from(TokenType::Assign, String::from(op), pos))
+                }
+            }
+            '<' => {
+                if next == '=' {
+                    self.advance();
+                    Some(Token::from(TokenType::Lte, String::from("<="), pos))
+                } else {
+                    Some(Token::from(TokenType::Lt, String::from(op), pos))
+                }
+            }
+            '>' => {
+                if next == '=' {
+                    self.advance();
+                    Some(Token::from(TokenType::Gte, String::from(">="), pos))
+                } else {
+                    Some(Token::from(TokenType::Gt, String::from(op), pos))
+                }
+            }
+            '!' => {
+                if next == '=' {
+                    self.advance();
+                    Some(Token::from(TokenType::Ne, String::from("!="), pos))
+                } else {
+                    Some(Token::from(TokenType::Neg, String::from(op), pos))
+                }
+            }
             _ => None,
         }
     }
@@ -162,8 +199,9 @@ impl Lexer {
         let value = String::from(&self.source[start..self.cursor]);
 
         let token_type = match value.as_str() {
-            "proc" => TokenType::Proc,
+            "if" => TokenType::If,
             "let" => TokenType::Let,
+            "proc" => TokenType::Proc,
             "struct" => TokenType::Struct,
             "return" => TokenType::Return,
             "true" | "false" => TokenType::Literal(LiteralType::Bool),
@@ -190,50 +228,54 @@ impl Lexer {
     }
 }
 
+fn get_next_token(lexer: &mut Lexer) -> Option<Token> {
+    if !lexer.valid() {
+        return None;
+    }
+
+    if lexer.character().is_ascii_whitespace() {
+        lexer.trim();
+
+        if !lexer.valid() {
+            return None;
+        }
+    }
+
+    if lexer.character() == '/' {
+        if let Some(c) = lexer.peek_char() {
+            if c == '/' {
+                lexer.drop_line();
+            }
+        }
+    }
+
+    let first = lexer.character();
+    let pos = lexer.get_cursor_pos();
+
+    let punctuation_tokens = "(){};:,";
+    let operator_tokens = "+-*/=<>!";
+
+    if first == '"' {
+        lexer.parse_string_token(pos)
+    } else if first == '\'' {
+        lexer.parse_char_token(pos)
+    } else if punctuation_tokens.contains(first) {
+        lexer.parse_punctuation_token(pos)
+    } else if operator_tokens.contains(first) {
+        lexer.parse_operator_token(pos)
+    } else if first.is_ascii_alphabetic() || first == '_' {
+        lexer.parse_ident_token(pos)
+    } else if first.is_ascii_digit() {
+        lexer.parse_digit_token(pos)
+    } else {
+        None
+    }
+}
+
 impl Iterator for Lexer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.valid() {
-            return None;
-        }
-
-        if self.character().is_ascii_whitespace() {
-            self.trim();
-
-            if !self.valid() {
-                return None;
-            }
-        }
-
-        if self.character() == '/' {
-            if let Some(c) = self.peek_char() {
-                if c == '/' {
-                    self.drop_line();
-                }
-            }
-        }
-
-        let first = self.character();
-        let pos = self.get_cursor_pos();
-
-        let punctuation_tokens = "(){};:,";
-        let operator_tokens = "+-*/=";
-
-        if first == '"' {
-            self.parse_string_token(pos)
-        } else if first == '\'' {
-            self.parse_char_token(pos)
-        } else if punctuation_tokens.contains(first) {
-            self.parse_punctuation_token(pos)
-        } else if operator_tokens.contains(first) {
-            self.parse_operator_token(pos)
-        } else if first.is_ascii_alphabetic() || first == '_' {
-            self.parse_ident_token(pos)
-        } else if first.is_ascii_digit() {
-            self.parse_digit_token(pos)
-        } else {
-            None
-        }
+        get_next_token(self)
     }
 }

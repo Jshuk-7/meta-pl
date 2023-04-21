@@ -2,7 +2,8 @@ use std::fmt::{Display, Write};
 
 use crate::{
     nodes::{
-        AssignNode, BinaryOpNode, FunCallNode, LetNode, ProcDefNode, StructDefNode, VariableNode,
+        AssignNode, BinaryOpNode, FunCallNode, IfNode, LetNode, ProcDefNode, StructDefNode,
+        VariableNode, ReturnNode,
     },
     token::{LiteralType, Token},
 };
@@ -11,6 +12,8 @@ use crate::{
 pub enum Expression {
     LetStatement(LetNode),
     AssignStatement(AssignNode),
+    ReturnStatement(ReturnNode),
+    IfStatement(IfNode),
     ProcDef(ProcDefNode),
     FunCall(FunCallNode),
     Variable(VariableNode),
@@ -26,26 +29,27 @@ impl Display for Expression {
                 f.write_fmt(format_args!("Let('{}': {})", let_node.name, let_node.value))
             }
             Expression::AssignStatement(assign_node) => {
-                let name = assign_node.value.var.name.clone();
+                let name = assign_node.value.metadata.name.clone();
                 f.write_fmt(format_args!("Assign('{name}': {})", assign_node.new_value))
             }
-            Expression::FunCall(fun_call_node) => {
-                let mut arguments = String::new();
+            Expression::ReturnStatement(return_node) => {
+                f.write_fmt(format_args!("Return({})", return_node.value))
+            }
+            Expression::IfStatement(if_node) => {
+                let mut statements = String::new();
+                if !if_node.statements.is_empty() {
+                    statements.push('\n');
+                }
+                for statement in if_node.statements.iter() {
+                    statements
+                        .write_fmt(format_args!("\t\t\t{statement}\n"))
+                        .unwrap()
+                }
+                if !if_node.statements.is_empty() {
+                    statements.push_str("\t\t");
+                }
 
-                if !fun_call_node.args.is_empty() {
-                    arguments.push('\n');
-                }
-                for arg in fun_call_node.args.iter() {
-                    arguments
-                        .write_fmt(format_args!("\t\t\t{}: {}\n", arg.var.name, arg.value))
-                        .unwrap();
-                }
-                if !fun_call_node.args.is_empty() {
-                    arguments.push_str("\t\t");
-                }
-
-                let name = fun_call_node.proc_def.name.clone();
-                f.write_fmt(format_args!("FunCall('{name}': args: [{arguments}])"))
+                f.write_fmt(format_args!("If({}: [{statements}])", if_node.value))
             }
             Expression::ProcDef(proc_def) => {
                 let mut arguments = String::new();
@@ -79,22 +83,34 @@ impl Display for Expression {
                     return_type_str = rt;
                 }
 
-                let mut return_value_str = String::from("None");
-                if let Some(rv) = proc_def.return_value.clone() {
-                    return_value_str = format!("{rv}");
-                }
-
                 f.write_fmt(format_args!(
                     "ProcDef('{}':
 \treturn_type: {return_type_str}
-\treturn_value: {return_value_str}
 \targs: [{arguments}]
 \tcontent: [{content}]\n)\n",
                     proc_def.name
                 ))
             }
+            Expression::FunCall(fun_call_node) => {
+                let mut arguments = String::new();
+
+                if !fun_call_node.args.is_empty() {
+                    arguments.push('\n');
+                }
+                for arg in fun_call_node.args.iter() {
+                    arguments
+                        .write_fmt(format_args!("\t\t\t{}: {}\n", arg.metadata.name, arg.value))
+                        .unwrap();
+                }
+                if !fun_call_node.args.is_empty() {
+                    arguments.push_str("\t\t");
+                }
+
+                let name = fun_call_node.proc_def.name.clone();
+                f.write_fmt(format_args!("FunCall('{name}': args: [{arguments}])"))
+            }
             Expression::Variable(var) => {
-                f.write_fmt(format_args!("Variable('{}': {})", var.var.name, var.value,))
+                f.write_fmt(format_args!("Variable('{}': {})", var.metadata.name, var.value,))
             }
             Expression::StructDef(struct_def) => {
                 let mut fields = String::new();

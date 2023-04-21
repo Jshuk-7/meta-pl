@@ -1,15 +1,22 @@
-StructDef('Point': fields: [
-	x: Number,
-	y: Number,
-])
+ProcDef('print':
+	return_type: None
+	args: [
+		msg: String,
+	]
+	content: []
+)
 
 ProcDef('main':
 	return_type: None
-	return_value: None
 	args: []
 	content: [
-		Literal('0': Number)
-		Literal('0': Number)
+		If(BinaryOp(Literal('1': Number), Eq, Literal('2': Number)): [
+			Let('a': Literal('10': Number))
+		])
+		Let('name': Literal('Jackson': String))
+		FunCall('print': args: [
+			msg: Variable('name': Literal('Jackson': String))
+		])
 	]
 )
 
