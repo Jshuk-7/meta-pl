@@ -58,11 +58,30 @@ impl Parser {
     fn parse_expr(&mut self, token: &Token) -> Option<Expression> {
         type TT = TokenType;
 
-        match token.kind {
+        if self
+            .variables
+            .iter()
+            .find(|&v| v.var.name == token.value)
+            .is_some()
+            || self
+                .functions
+                .iter()
+                .find(|&f| f.name == token.value)
+                .is_some()
+        {
+            if let Some(ident) = self.visit_identifier(token) {
+                return self.visit_binary_op(Some(ident));
+            }
+        }
+
+        match token.kind.clone() {
             TT::Proc => self.visit_procedure_def(),
             TT::Ident => self.visit_identifier(token),
             TT::Let => self.visit_let_statement(),
-            TT::Literal(_) => self.visit_binary_op(token),
+            TT::Literal(lt) => {
+                let literal = Some(Expression::Literal(token.clone(), lt));
+                self.visit_binary_op(literal)
+            }
             _ => None,
         }
     }
@@ -275,40 +294,29 @@ impl Parser {
         None
     }
 
-    fn visit_binary_op(&mut self, token: &Token) -> Option<Expression> {
-        if let TokenType::Literal(literal_type) = token.kind.clone() {
-            let start = Some(Expression::Literal(token.clone(), literal_type.clone()));
-            let mut ex = start;
+    fn visit_binary_op(&mut self, expr: Option<Expression>) -> Option<Expression> {
+        let mut ex = expr;
 
-            let ops = "+-*/=";
-            while let Some(potential_op) = self.lexer.peek_char() {
-                if !ops.contains(potential_op) {
-                    break;
-                }
+        let ops = "+-*/=";
+        while let Some(potential_op) = self.lexer.peek_char() {
+            if !ops.contains(potential_op) {
+                break;
+            }
 
-                let op_token = self.lexer.next().unwrap();
-                let op = self.token_type_to_binary_op(op_token.kind);
+            let op_token = self.lexer.next().unwrap();
+            let op = self.token_type_to_binary_op(op_token.kind);
 
-                let next = self.lexer.next().unwrap();
-                let rhs = Box::new(Expression::Literal(next, literal_type.clone()));
-
+            let next = self.lexer.next().unwrap();
+            if let TokenType::Literal(lt) = next.kind.clone() {
+                let rhs = Box::new(Expression::Literal(next, lt));
+    
                 if let Some(lhs) = ex {
                     ex = Some(Expression::BinaryOperation(Box::new(lhs), op, rhs));
                 }
             }
-
-            return ex;
         }
 
-        self.visit_literal(token)
-    }
-
-    fn visit_literal(&mut self, token: &Token) -> Option<Expression> {
-        if let TokenType::Literal(literal_type) = token.kind.clone() {
-            return Some(Expression::Literal(token.clone(), literal_type));
-        }
-
-        None
+        return ex;
     }
 
     fn create_variable(&self, name: String, kind: LiteralType, value: Box<Expression>) -> Variable {

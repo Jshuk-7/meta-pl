@@ -8,3 +8,14 @@ ProcDef main {
 	]
 }
 
+ProcDef hello {
+	return_type: i32
+	return_value: Variable(res: Variable(a: Literal('2', Number)))
+	args: []
+	content: [
+		Let('a' = Literal('1', Number))
+		Let('b' = Literal('2', Number))
+		Let('res' = Variable(a: Literal('2', Number)))
+	]
+}
+
