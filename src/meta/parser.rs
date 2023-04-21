@@ -168,8 +168,20 @@ impl Parser {
                         if let Some(expr) = self.parse_expr(&next) {
                             let new_value = Box::new(expr);
 
+                            let mut variable = var.clone();
+                            variable.value = new_value.clone();
+
+                            if let Some(pos) = self
+                                .variables
+                                .iter()
+                                .position(|v| v.var.name == variable.var.name)
+                            {
+                                self.variables.remove(pos);
+                                self.variables.insert(pos, variable.clone());
+                            }
+
                             return Some(Expression::AssignStatement {
-                                value: var.clone(),
+                                value: variable,
                                 new_value,
                             });
                         }

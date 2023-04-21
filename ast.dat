@@ -1,24 +1,10 @@
-ProcDef do_work {
-	return_type: i32
-	return_value: Literal('0', Number)
-	args: [
-		a: Char,
-		b: Bool,
-		c: Number,
-		d: String,
-	]
-	content: []
-}
-
 ProcDef main {
 	return_type: i32
-	return_value: FunCall('do_work', args: [
-			a: Literal('c', Char)
-			b: Literal('false', Bool)
-			c: Literal('0', Number)
-			d: Literal('Hello', String)
-		])
+	return_value: Variable(a: Literal('2', Number))
 	args: []
-	content: []
+	content: [
+		Let('a' = Literal('1', Number))
+		Assign('a' = Literal('2', Number))
+	]
 }
 
