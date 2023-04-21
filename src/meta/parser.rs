@@ -47,9 +47,7 @@ impl Parser {
         while let Some(token) = &self.lexer.next() {
             if let TokenType::Semicolon = token.kind {
                 continue;
-            }
-
-            if let Some(expr) = self.parse_expr(token) {
+            } else if let Some(expr) = self.parse_expr(token) {
                 self.program.push(expr);
             }
         }
@@ -70,6 +68,8 @@ impl Parser {
     }
 
     fn visit_procedure_def(&mut self) -> Option<Expression> {
+        type TT = TokenType;
+
         if let Some(ident) = self.lexer.next() {
             let mut args = Vec::new();
             let mut statements = Vec::new();
@@ -83,14 +83,13 @@ impl Parser {
 
                 // statements
                 if let Some(n) = self.lexer.next() {
-                    if n.kind == TokenType::Colon {
+                    if n.kind == TT::Colon {
                         let rt = self.lexer.next().unwrap();
                         return_type = Some(rt.value);
 
                         let _ocurly = self.lexer.next().unwrap();
                     }
 
-                    type TT = TokenType;
                     while let Some(next) = self.lexer.next() {
                         if let TT::Ccurly = next.kind {
                             break;
@@ -98,10 +97,12 @@ impl Parser {
                             continue;
                         }
 
-                        if let TokenType::Return = next.kind {
+                        if let TT::Return = next.kind {
                             let rv = self.lexer.next().unwrap();
-                            if let Some(value) = self.parse_expr(&rv) {
-                                return_value = Some(Box::new(value));
+                            if return_type.is_some() {
+                                if let Some(value) = self.parse_expr(&rv) {
+                                    return_value = Some(Box::new(value));
+                                }
                             }
 
                             break;
@@ -131,28 +132,21 @@ impl Parser {
     }
 
     fn visit_args(&mut self, args: &mut Vec<VarDef>) {
-        while let Some(potential_arg) = self.lexer.next() {
-            if potential_arg.kind == TokenType::Cparen {
+        while let Some(ident) = self.lexer.next() {
+            if let TokenType::Cparen = ident.kind {
                 break;
-            }
-
-            if potential_arg.kind == TokenType::Comma {
+            } else if let TokenType::Comma = ident.kind {
                 continue;
             }
 
             let _colon = self.lexer.next().unwrap();
             let type_name = self.lexer.next().unwrap();
 
-            let literal_type = match type_name.value.as_str() {
-                "char" => LiteralType::Char,
-                "i32" => LiteralType::Number,
-                "String" => LiteralType::String,
-                _ => LiteralType::None,
-            };
+            let kind = self.literal_type_from_string(type_name.value);
 
             let arg = VarDef {
-                name: potential_arg.value,
-                kind: literal_type,
+                name: ident.value,
+                kind,
             };
 
             args.push(arg);
@@ -225,9 +219,18 @@ impl Parser {
 
     fn visit_let_statement(&mut self) -> Option<Expression> {
         if let Some(ident) = self.lexer.next() {
-            // TODO: inline type hints
-            println!("{}", self.lexer.peek_char().unwrap());
-            if let Some(_equal_op) = self.lexer.next() {
+            if let Some(next) = self.lexer.next() {
+                let mut type_hint = None;
+
+                if let TokenType::Colon = next.kind {
+                    let type_name = self.lexer.next().unwrap();
+                    if let TokenType::Ident = type_name.kind {
+                        type_hint = Some(type_name.value);
+                    }
+
+                    let _equal_op = self.lexer.next().unwrap();
+                }
+
                 let first = self.lexer.next().unwrap();
 
                 if let Some(value) = self.parse_expr(&first) {
@@ -237,6 +240,17 @@ impl Parser {
                         TokenType::Literal(lt) => lt,
                         _ => LiteralType::None,
                     };
+
+                    if let Some(_type) = type_hint {
+                        let kind_str = self.string_from_literal_type(kind.clone());
+
+                        if kind_str != _type {
+                            println!(
+                                "<{}> Error: expected {_type} found '{kind_str}'",
+                                first.position,
+                            );
+                        }
+                    }
 
                     let variable = self.create_variable(name.clone(), kind, value.clone());
                     self.variables.push(variable);
@@ -289,6 +303,28 @@ impl Parser {
         Variable {
             var: VarDef { name, kind },
             value,
+        }
+    }
+
+    fn string_from_literal_type(&self, kind: LiteralType) -> String {
+        let kind = format!("{kind:?}");
+        let s = match &kind[..] {
+            "Char" => "char",
+            "Bool" => "bool",
+            "Number" => "i32",
+            kind => kind,
+        };
+
+        String::from(s)
+    }
+
+    fn literal_type_from_string(&self, value: String) -> LiteralType {
+        match &value[..] {
+            "char" => LiteralType::Char,
+            "bool" => LiteralType::Bool,
+            "i32" => LiteralType::Number,
+            "String" => LiteralType::String,
+            _ => LiteralType::None,
         }
     }
 

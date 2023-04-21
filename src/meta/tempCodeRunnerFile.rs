@@ -1,1 +1,1 @@
-create_variable
+literal_type_from_string

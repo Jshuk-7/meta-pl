@@ -1,23 +1,7 @@
-proc char_test(): char {
-    let a: char = 'a';
-    return a;
-}
-
-proc bool_test(): bool {
-    let b = false;
-    return b;
-}
-
-proc i32_test(): i32 {
-    let c = 1;
-    return c;
-}
-
-proc string_test(): String {
-    let d = "Hello";
-    return d;
+proc do_work(a: char, b: bool, c: i32, d: String): i32 {
+    return 0;
 }
 
 proc main(): i32 {
-    return 0;
+    return do_work('c', false, 0, "Hello");
 }
