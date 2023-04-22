@@ -196,7 +196,8 @@ impl Parser {
                         }
                     }
 
-                    let variable = self.make_variable(name.clone(), kind_str.clone(), value.clone());
+                    let variable =
+                        self.make_variable(name.clone(), kind_str.clone(), value.clone());
                     self.variables.push(variable);
 
                     let let_node = LetNode {
@@ -422,7 +423,7 @@ impl Parser {
             args,
         };
 
-        return self.visit_binary_op(Some(Expression::FunCall(fun_call_node)));
+        self.visit_binary_op(Some(Expression::FunCall(fun_call_node)))
     }
 
     fn get_struct_instance(&mut self, struct_def: &StructDefNode) -> Option<Expression> {
@@ -513,7 +514,9 @@ impl Parser {
                                     field: field.clone(),
                                 };
 
-                                return self.visit_binary_op(Some(Expression::StructFieldAccess(field_access_node)));
+                                return self.visit_binary_op(Some(Expression::StructFieldAccess(
+                                    field_access_node,
+                                )));
                             }
                         }
                     }
@@ -704,7 +707,7 @@ impl Parser {
             fields,
         };
 
-        return Expression::StructInstance(struct_instance_node);
+        Expression::StructInstance(struct_instance_node)
     }
 
     fn make_variable(
@@ -730,17 +733,6 @@ impl Parser {
         };
 
         String::from(s)
-    }
-
-    fn literal_type_from_string(&self, value: String) -> LiteralType {
-        match &value[..] {
-            "char" => LiteralType::Char,
-            "bool" => LiteralType::Bool,
-            "i32" => LiteralType::Number,
-            "f32" => LiteralType::Float,
-            "String" => LiteralType::String,
-            _ => LiteralType::None,
-        }
     }
 
     fn token_type_to_binary_op(&self, kind: TokenType) -> BinaryOp {

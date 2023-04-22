@@ -100,21 +100,13 @@ impl Executor {
                 memory.structs.push(struct_instance_node.clone());
             }
             Expression::StructFieldAssign(field_assign_node) => {
-                let mut i = 0;
-
-                'outer: for struct_instance in memory.structs.clone().iter() {
-                    let mut j = 0;
-
-                    for field in struct_instance.fields.iter() {
+                'outer: for (i, struct_instance) in memory.structs.clone().iter().enumerate() {
+                    for (j, field) in struct_instance.fields.iter().enumerate() {
                         if field.metadata.name == field_assign_node.field.metadata.name {
                             memory.structs[i].fields[j].value = field_assign_node.new_value.clone();
                             break 'outer;
                         }
-
-                        j += 1;
                     }
-
-                    i += 1;
                 }
             }
             Expression::StructFieldAccess(_) => {}

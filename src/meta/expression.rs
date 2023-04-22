@@ -2,8 +2,8 @@ use std::fmt::{Display, Write};
 
 use crate::{
     nodes::{
-        AssignNode, BinaryOpNode, FieldAssignNode, FunCallNode, IfNode, LetNode, ProcDefNode,
-        ReturnNode, StructDefNode, StructInstanceNode, VariableNode, FieldAccessNode,
+        AssignNode, BinaryOpNode, FieldAccessNode, FieldAssignNode, FunCallNode, IfNode, LetNode,
+        ProcDefNode, ReturnNode, StructDefNode, StructInstanceNode, VariableNode,
     },
     token::{LiteralType, Token},
 };
