@@ -1,1 +1,1 @@
-LiteralType::Number
+println!("Assigned");

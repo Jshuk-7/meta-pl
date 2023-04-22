@@ -124,14 +124,17 @@ impl Lexer {
 
         self.advance();
 
+        let value = String::from(token);
+
         match token {
-            '(' => Some(Token::from(TokenType::Oparen, String::from(token), pos)),
-            ')' => Some(Token::from(TokenType::Cparen, String::from(token), pos)),
-            '{' => Some(Token::from(TokenType::Ocurly, String::from(token), pos)),
-            '}' => Some(Token::from(TokenType::Ccurly, String::from(token), pos)),
-            ':' => Some(Token::from(TokenType::Colon, String::from(token), pos)),
-            ';' => Some(Token::from(TokenType::Semicolon, String::from(token), pos)),
-            ',' => Some(Token::from(TokenType::Comma, String::from(token), pos)),
+            '(' => Some(Token::from(TokenType::Oparen, value, pos)),
+            ')' => Some(Token::from(TokenType::Cparen, value, pos)),
+            '{' => Some(Token::from(TokenType::Ocurly, value, pos)),
+            '}' => Some(Token::from(TokenType::Ccurly, value, pos)),
+            ':' => Some(Token::from(TokenType::Colon, value, pos)),
+            ';' => Some(Token::from(TokenType::Semicolon, value, pos)),
+            ',' => Some(Token::from(TokenType::Comma, value, pos)),
+            '.' => Some(Token::from(TokenType::Period, value, pos)),
             _ => None,
         }
     }
@@ -262,7 +265,7 @@ fn get_next_token(lexer: &mut Lexer) -> Option<Token> {
     let first = lexer.character();
     let pos = lexer.get_cursor_pos();
 
-    let punctuation_tokens = "(){};:,";
+    let punctuation_tokens = "(){};:,.";
     let operator_tokens = "+-*/=<>!";
 
     if first == '"' {

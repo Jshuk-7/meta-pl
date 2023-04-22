@@ -26,6 +26,7 @@ pub enum TokenType {
     Colon,
     Semicolon,
     Comma,
+    Period,
     Ocurly,
     Ccurly,
     Add,

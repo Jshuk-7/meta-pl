@@ -1,28 +1,20 @@
-StructDef('Program': fields: [
+StructDef('Person': fields: [
 	name: String,
-	instruction_count: Number,
+	age: Number,
 ])
-
-ProcDef('new_program':
-	return_type: Program
-	args: []
-	content: [
-		Let('program': Struct('Program': fields: [
-			name: Literal('Script.mt': String),
-			instruction_count: Literal('1': Number),
-		]))
-		Return(Variable('program': Struct('Program': fields: [
-			name: Literal('Script.mt': String),
-			instruction_count: Literal('1': Number),
-		])))
-	]
-)
 
 ProcDef('main':
 	return_type: None
 	args: []
 	content: [
-		Let('program': FunCall('new_program': args: []))
+		Let('person': Struct('Person': fields: [
+			name: Literal('Jack': String),
+			age: Literal('22': Number),
+		]))
+		StructFieldAssign('person': field: 'name': value: Literal('Fred': String))
+		StructFieldAssign('person': field: 'age': value: Literal('12': Number))
+		Let('name': StructFieldAccess('person': field: 'name': value: Literal('Jack': String)))
+		Let('age': StructFieldAccess('person': field: 'age': value: Literal('22': Number)))
 	]
 )
 

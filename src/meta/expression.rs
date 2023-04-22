@@ -2,8 +2,8 @@ use std::fmt::{Display, Write};
 
 use crate::{
     nodes::{
-        AssignNode, BinaryOpNode, FunCallNode, IfNode, LetNode, ProcDefNode, ReturnNode,
-        StructDefNode, StructInstanceNode, VariableNode,
+        AssignNode, BinaryOpNode, FieldAssignNode, FunCallNode, IfNode, LetNode, ProcDefNode,
+        ReturnNode, StructDefNode, StructInstanceNode, VariableNode, FieldAccessNode,
     },
     token::{LiteralType, Token},
 };
@@ -19,6 +19,8 @@ pub enum Expression {
     FunCall(FunCallNode),
     StructDef(StructDefNode),
     StructInstance(StructInstanceNode),
+    StructFieldAssign(FieldAssignNode),
+    StructFieldAccess(FieldAccessNode),
     BinaryOp(BinaryOpNode),
     Literal(Token, LiteralType),
 }
@@ -152,6 +154,18 @@ impl Display for Expression {
                     struct_instance_node.struct_def.type_name
                 ))
             }
+            Expression::StructFieldAssign(field_assign_node) => f.write_fmt(format_args!(
+                "StructFieldAssign('{}': field: '{}': value: {})",
+                field_assign_node.struct_instance.metadata.name,
+                field_assign_node.field.metadata.name,
+                field_assign_node.new_value
+            )),
+            Expression::StructFieldAccess(field_access_node) => f.write_fmt(format_args!(
+                "StructFieldAccess('{}': field: '{}': value: {})",
+                field_access_node.struct_instance.metadata.name,
+                field_access_node.field.metadata.name,
+                field_access_node.field.value,
+            )),
             Expression::BinaryOp(binary_op_node) => f.write_fmt(format_args!(
                 "BinaryOp({}, {:?}, {})",
                 binary_op_node.lhs, binary_op_node.op, binary_op_node.rhs

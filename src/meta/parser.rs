@@ -4,8 +4,8 @@ use crate::{
     expression::Expression,
     lexer::Lexer,
     nodes::{
-        AssignNode, BinaryOp, BinaryOpNode, FunCallNode, IfNode, LetNode, ProcDefNode, ReturnNode,
-        StructDefNode, StructInstanceNode, VarMetadataNode, VariableNode,
+        AssignNode, BinaryOp, BinaryOpNode, FieldAssignNode, FunCallNode, IfNode, LetNode,
+        ProcDefNode, ReturnNode, StructDefNode, StructInstanceNode, VarMetadataNode, VariableNode, FieldAccessNode,
     },
     token::{LiteralType, Token, TokenType},
 };
@@ -18,6 +18,7 @@ pub struct Parser {
     variables: Vec<VariableNode>,
     procedures: Vec<ProcDefNode>,
     structs: Vec<StructDefNode>,
+    struct_instances: Vec<StructInstanceNode>,
 }
 
 impl Parser {
@@ -28,6 +29,7 @@ impl Parser {
             variables: Vec::new(),
             procedures: Vec::new(),
             structs: Vec::new(),
+            struct_instances: Vec::new(),
         }
     }
 
@@ -192,10 +194,10 @@ impl Parser {
                         _ => LiteralType::None,
                     };
 
-                    if let Some(_type) = type_hint {
-                        if kind_str != _type {
+                    if let Some(hint) = type_hint {
+                        if kind_str != hint {
                             println!(
-                                "<{}> Error: expected {_type} found '{kind_str}'",
+                                "<{}> Error: expected '{hint}' found '{kind_str}'",
                                 first.position,
                             );
                         }
@@ -321,31 +323,17 @@ impl Parser {
     }
 
     fn visit_identifier(&mut self, token: &Token) -> Option<Expression> {
-        if let Some(var) = self
+        let mut field_token = None;
+
+        if let Some(variable) = self
             .variables
             .clone()
             .iter()
             .find(|&v| v.metadata.name == token.value)
         {
-            if let Some(c) = self.lexer.peek_char() {
-                if c == '=' {
-                    if let Some(_equal_op) = self.lexer.next() {
-                        let next = self.lexer.next().unwrap();
-
-                        if let Some(expr) = self.parse_expr(&next) {
-                            let new_value = Box::new(expr);
-
-                            let assign_node = AssignNode {
-                                value: var.clone(),
-                                new_value,
-                            };
-
-                            return Some(Expression::AssignStatement(assign_node));
-                        }
-                    }
-                } else {
-                    return self.visit_binary_op(Some(Expression::Variable(var.clone())));
-                }
+            let ret = self.get_variable(variable, &mut field_token);
+            if ret.is_some() {
+                return ret;
             }
         } else if let Some(proc_def) = self
             .procedures
@@ -353,98 +341,189 @@ impl Parser {
             .iter()
             .find(|&f| f.name == token.value)
         {
-            let mut args = Vec::new();
-
-            if let Some(_oparen) = self.lexer.next() {
-                let mut i = 0;
-                while let Some(potential_arg) = self.lexer.next() {
-                    if potential_arg.kind == TokenType::Cparen {
-                        break;
-                    } else if potential_arg.kind == TokenType::Comma {
-                        continue;
-                    }
-
-                    if let Some(value) = self.parse_expr(&potential_arg) {
-                        let var = proc_def.args[i].clone();
-                        let variable = self.make_variable(var.name, var.kind, Box::new(value));
-
-                        args.push(variable);
-
-                        i += 1;
-                    }
-                }
-            }
-
-            let fun_call_node = FunCallNode {
-                proc_def: proc_def.clone(),
-                args,
-            };
-
-            return self.visit_binary_op(Some(Expression::FunCall(fun_call_node)));
+            return self.get_procedure(proc_def);
         } else if let Some(struct_def) = self
             .structs
             .clone()
             .iter()
             .find(|&s| s.type_name == token.value)
         {
-            if let Some(_ocurly) = self.lexer.next() {
-                let mut fields = Vec::new();
-                let mut i = 0;
+            return self.get_struct_instance(struct_def);
+        }
 
-                while self.lexer.valid() {
-                    if let Some(field) = self.lexer.next() {
-                        if let TokenType::Ccurly = field.kind {
-                            break;
-                        } else if field.kind != TokenType::Ident {
-                            println!(
-                                "<{}> Error: expected identifier found '{:?}'",
-                                field.position, field.kind
-                            );
+        let ret = self.get_or_assign_struct_field(field_token);
+        if ret.is_some() {
+            return ret;
+        }
 
-                            break;
-                        }
+        println!(
+            "<{}> Error: expected identifier found '{}'",
+            token.position, token.value
+        );
 
-                        let _colon = self.lexer.next().unwrap();
+        None
+    }
 
-                        let first = self.lexer.next().unwrap();
-                        if let Some(value) = self.parse_expr(&first) {
-                            let field = self.make_variable(
-                                struct_def.fields[i].name.clone(),
-                                struct_def.fields[i].kind,
-                                Box::new(value),
-                            );
+    fn get_variable(
+        &mut self,
+        variable: &VariableNode,
+        field_token: &mut Option<Token>,
+    ) -> Option<Expression> {
+        if let Some(c) = self.lexer.peek_char() {
+            if c == '=' {
+                if let Some(_equal_op) = self.lexer.next() {
+                    let next = self.lexer.next().unwrap();
 
-                            fields.push(field);
-                            i += 1;
-                        }
+                    if let Some(expr) = self.parse_expr(&next) {
+                        let new_value = Box::new(expr);
+
+                        let assign_node = AssignNode {
+                            value: variable.clone(),
+                            new_value,
+                        };
+
+                        return Some(Expression::AssignStatement(assign_node));
+                    }
+                }
+            }
+        }
+
+        if self.lexer.character() == '.' {
+            let _period = self.lexer.next().unwrap();
+            *field_token = Some(self.lexer.next().unwrap());
+        } else {
+            return self.visit_binary_op(Some(Expression::Variable(variable.clone())));
+        }
+
+        None
+    }
+
+    fn get_procedure(&mut self, proc_def: &ProcDefNode) -> Option<Expression> {
+        let mut args = Vec::new();
+
+        if let Some(_oparen) = self.lexer.next() {
+            let mut i = 0;
+            while let Some(potential_arg) = self.lexer.next() {
+                if potential_arg.kind == TokenType::Cparen {
+                    break;
+                } else if potential_arg.kind == TokenType::Comma {
+                    continue;
+                }
+
+                if let Some(value) = self.parse_expr(&potential_arg) {
+                    let var = proc_def.args[i].clone();
+                    let variable = self.make_variable(var.name, var.kind, Box::new(value));
+
+                    args.push(variable);
+
+                    i += 1;
+                }
+            }
+        }
+
+        let fun_call_node = FunCallNode {
+            proc_def: proc_def.clone(),
+            args,
+        };
+
+        return self.visit_binary_op(Some(Expression::FunCall(fun_call_node)));
+    }
+
+    fn get_struct_instance(&mut self, struct_def: &StructDefNode) -> Option<Expression> {
+        if let Some(_ocurly) = self.lexer.next() {
+            let mut fields = Vec::new();
+            let mut i = 0;
+
+            while self.lexer.valid() {
+                if let Some(field) = self.lexer.next() {
+                    if let TokenType::Ccurly = field.kind {
+                        break;
+                    } else if field.kind != TokenType::Ident {
+                        println!(
+                            "<{}> Error: expected identifier found '{:?}'",
+                            field.position, field.kind
+                        );
+
+                        break;
                     }
 
-                    if self.lexer.character() == ',' {
-                        let _comma = self.lexer.next().unwrap();
-                    }
+                    let _colon = self.lexer.next().unwrap();
 
-                    if let Some(c) = self.lexer.peek_char() {
-                        if c == '}' {
-                            let _ccurly = self.lexer.next().unwrap();
-                            break;
-                        }
+                    let first = self.lexer.next().unwrap();
+                    if let Some(value) = self.parse_expr(&first) {
+                        let field = self.make_variable(
+                            struct_def.fields[i].name.clone(),
+                            struct_def.fields[i].kind,
+                            Box::new(value),
+                        );
+
+                        fields.push(field);
+                        i += 1;
                     }
                 }
 
-                let _semicolon = self.lexer.next().unwrap();
+                if self.lexer.character() == ',' {
+                    let _comma = self.lexer.next().unwrap();
+                }
 
-                let struct_instance_node = StructInstanceNode {
-                    struct_def: struct_def.clone(),
-                    fields,
-                };
-
-                return Some(Expression::StructInstance(struct_instance_node));
+                if let Some(c) = self.lexer.peek_char() {
+                    if c == '}' {
+                        let _ccurly = self.lexer.next().unwrap();
+                        break;
+                    }
+                }
             }
-        } else {
-            println!(
-                "<{}> Error: expected identifier found '{}'",
-                token.position, token.value
-            );
+
+            let _semicolon = self.lexer.next().unwrap();
+
+            let struct_instance_node = StructInstanceNode {
+                struct_def: struct_def.clone(),
+                fields,
+            };
+
+            self.struct_instances.push(struct_instance_node.clone());
+
+            return Some(Expression::StructInstance(struct_instance_node));
+        }
+
+        None
+    }
+
+    fn get_or_assign_struct_field(&mut self, field_token: Option<Token>) -> Option<Expression> {
+        if let Some(struct_field) = field_token {
+            for variable in self.variables.clone().iter() {
+                if let Expression::StructInstance(struct_instance) = variable.value.as_ref() {
+                    for field in struct_instance.fields.iter() {
+                        if field.metadata.name != struct_field.value {
+                            continue;
+                        }
+
+                        if let Some(c) = self.lexer.peek_char() {
+                            if c == '=' {
+                                let _equal_op = self.lexer.next().unwrap();
+        
+                                let next = self.lexer.next().unwrap();
+                                if let Some(value) = self.parse_expr(&next) {
+                                    let field_assign_node = FieldAssignNode {
+                                        struct_instance: variable.clone(),
+                                        field: field.clone(),
+                                        new_value: Box::new(value),
+                                    };
+        
+                                    return Some(Expression::StructFieldAssign(field_assign_node));
+                                }
+                            } else {
+                                let field_access_node = FieldAccessNode {
+                                    struct_instance: variable.clone(),
+                                    field: field.clone(),
+                                };
+
+                                return Some(Expression::StructFieldAccess(field_access_node));
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         None

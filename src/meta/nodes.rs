@@ -79,6 +79,19 @@ pub struct StructInstanceNode {
 }
 
 #[derive(Debug, Clone)]
+pub struct FieldAssignNode {
+    pub struct_instance: VariableNode,
+    pub field: VariableNode,
+    pub new_value: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FieldAccessNode {
+    pub struct_instance: VariableNode,
+    pub field: VariableNode,
+}
+
+#[derive(Debug, Clone)]
 pub struct BinaryOpNode {
     pub lhs: Box<Expression>,
     pub op: BinaryOp,

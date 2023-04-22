@@ -1,13 +1,14 @@
-struct Program {
+struct Person {
     name: String,
-    instruction_count: i32,
-}
-
-proc new_program(): Program {
-    let program: Program = Program { name: "Script.mt", instruction_count: 1 };
-    return program;
+    age: i32,
 }
 
 proc main() {
-    let program: Program = new_program();
+    let person: Person = Person { name: "Jack", age: 22 };
+    person.name = "Fred";
+    
+    person.age = 12;
+
+    let name = person.name;
+    let age = person.age;
 }

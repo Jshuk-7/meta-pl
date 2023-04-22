@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::{
     expression::Expression,
-    nodes::{ProcDefNode, StructDefNode, VarMetadataNode, VariableNode},
+    nodes::{ProcDefNode, StructInstanceNode, VarMetadataNode, VariableNode},
     parser::{Parser, Program},
 };
 
@@ -12,7 +12,7 @@ pub struct Executor {}
 
 struct RuntimeVM {
     pub variables: Vec<VariableNode>,
-    pub structs: Vec<StructDefNode>,
+    pub structs: Vec<StructInstanceNode>,
 }
 
 impl RuntimeVM {
@@ -38,18 +38,16 @@ impl Executor {
     }
 
     fn find_startup_proc(program: Program, target: &str) -> Option<ProcDefNode> {
-        let expr = program.iter().find(move |&expr| {
+        let proc = program.iter().find(move |&expr| {
             if let Expression::ProcDef(ProcDefNode { name, .. }) = expr {
-                name == target
-            } else {
-                false
+                return name == target;
             }
+
+            false
         });
 
-        if let Some(proc) = expr {
-            if let Expression::ProcDef(proc_def_node) = proc {
-                return Some(proc_def_node.clone());
-            }
+        if let Some(Expression::ProcDef(proc_def_node)) = proc {
+            return Some(proc_def_node.clone());
         }
 
         println!("Error: failed to find entry point '{target}'");
@@ -76,6 +74,10 @@ impl Executor {
                     value: let_node.value.clone(),
                 };
 
+                if let Expression::StructInstance(_) = let_node.value.as_ref() {
+                    Executor::execute_statement(let_node.value.as_ref(), memory);
+                }
+
                 memory.variables.push(var);
             }
             Expression::AssignStatement(assign_node) => {
@@ -88,13 +90,34 @@ impl Executor {
                 variable.value = assign_node.new_value.clone();
             }
             Expression::ReturnStatement(_) => {}
-            Expression::Variable(_) => todo!(),
+            Expression::Variable(_) => {}
             Expression::ProcDef(_) => todo!(),
             Expression::FunCall(fun_call_node) => {
                 Executor::execute_procedure(fun_call_node.proc_def.clone(), memory)
             }
             Expression::StructDef(_) => todo!(),
-            Expression::StructInstance(struct_instance_node) => {}
+            Expression::StructInstance(struct_instance_node) => {
+                memory.structs.push(struct_instance_node.clone());
+            }
+            Expression::StructFieldAssign(field_assign_node) => {
+                let mut i = 0;
+
+                'outer: for struct_instance in memory.structs.clone().iter() {
+                    let mut j = 0;
+
+                    for field in struct_instance.fields.iter() {
+                        if field.metadata.name == field_assign_node.field.metadata.name {
+                            memory.structs[i].fields[j].value = field_assign_node.new_value.clone();
+                            break 'outer;
+                        }
+
+                        j += 1;
+                    }
+
+                    i += 1;
+                }
+            }
+            Expression::StructFieldAccess(_) => {}
             Expression::BinaryOp(_) => todo!(),
             Expression::Literal(_, _) => todo!(),
         }
