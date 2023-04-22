@@ -25,6 +25,7 @@ pub struct IfNode {
 #[derive(Debug, Clone)]
 pub struct LetNode {
     pub name: String,
+    pub kind: LiteralType,
     pub value: Box<Expression>,
 }
 
@@ -40,14 +41,14 @@ pub struct ReturnNode {
 }
 
 #[derive(Debug, Clone)]
-pub struct VarDefNode {
+pub struct VarMetadataNode {
     pub name: String,
     pub kind: LiteralType,
 }
 
 #[derive(Debug, Clone)]
 pub struct VariableNode {
-    pub metadata: VarDefNode,
+    pub metadata: VarMetadataNode,
     pub value: Box<Expression>,
 }
 
@@ -55,20 +56,26 @@ pub struct VariableNode {
 pub struct ProcDefNode {
     pub name: String,
     pub return_type: Option<String>,
-    pub args: Vec<VarDefNode>,
+    pub args: Vec<VarMetadataNode>,
     pub statements: Vec<Expression>,
-}
-
-#[derive(Debug, Clone)]
-pub struct StructDefNode {
-    pub type_name: String,
-    pub fields: Vec<VarDefNode>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FunCallNode {
     pub proc_def: ProcDefNode,
     pub args: Vec<VariableNode>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructDefNode {
+    pub type_name: String,
+    pub fields: Vec<VarMetadataNode>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructInstanceNode {
+    pub struct_def: StructDefNode,
+    pub fields: Vec<VariableNode>,
 }
 
 #[derive(Debug, Clone)]

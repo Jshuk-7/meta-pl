@@ -1,16 +1,17 @@
 use std::fmt::Display;
 
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub enum LiteralType {
     #[default]
     None,
     Char,
     Bool,
     Number,
+    Float,
     String,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq, Clone, Copy)]
 pub enum TokenType {
     #[default]
     None,
@@ -27,10 +28,10 @@ pub enum TokenType {
     Comma,
     Ocurly,
     Ccurly,
-    Plus,
-    Minus,
-    Multiply,
-    Divide,
+    Add,
+    Sub,
+    Mul,
+    Div,
     Assign,
     Eq,
     Ne,

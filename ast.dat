@@ -1,19 +1,28 @@
-ProcDef('do_work':
+StructDef('Player': fields: [
+	a: Char,
+	b: Bool,
+	c: Number,
+	d: Float,
+	e: String,
+])
+
+ProcDef('struct_test':
 	return_type: None
 	args: []
 	content: [
-		Let('b': Literal('2': Number))
-		Assign('b': Literal('5': Number))
+		Let('player': Struct('Player': fields: [
+			a: Literal('x': Char),
+			b: Literal('false': Bool),
+			c: Literal('1': Number),
+			d: Literal('2.0': Float),
+			e: Literal('Hello': String),
+		]))
 	]
 )
 
 ProcDef('main':
 	return_type: None
 	args: []
-	content: [
-		Let('a': Literal('10': Number))
-		Assign('a': Literal('12': Number))
-		FunCall('do_work': args: [])
-	]
+	content: []
 )
 

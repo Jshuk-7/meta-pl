@@ -148,10 +148,10 @@ impl Lexer {
         self.advance();
 
         match op {
-            '+' => Some(Token::from(TokenType::Plus, String::from(op), pos)),
-            '-' => Some(Token::from(TokenType::Minus, String::from(op), pos)),
-            '*' => Some(Token::from(TokenType::Multiply, String::from(op), pos)),
-            '/' => Some(Token::from(TokenType::Divide, String::from(op), pos)),
+            '+' => Some(Token::from(TokenType::Add, String::from(op), pos)),
+            '-' => Some(Token::from(TokenType::Sub, String::from(op), pos)),
+            '*' => Some(Token::from(TokenType::Mul, String::from(op), pos)),
+            '/' => Some(Token::from(TokenType::Div, String::from(op), pos)),
             '=' => {
                 if next == '=' {
                     self.advance();
@@ -214,14 +214,24 @@ impl Lexer {
     fn parse_digit_token(&mut self, pos: Position) -> Option<Token> {
         let start = self.cursor;
         let mut c = self.character();
+        
+        let mut is_float = false;
         while self.valid() && c.is_ascii_digit() {
             self.advance();
             c = self.character();
+
+            if c == '.' {
+                is_float = true;
+                self.advance();
+                c = self.character();
+            }
         }
+
+        let lt = if is_float { LiteralType::Float } else { LiteralType::Number };
 
         let value = String::from(&self.source[start..self.cursor]);
         Some(Token::from(
-            TokenType::Literal(LiteralType::Number),
+            TokenType::Literal(lt),
             value,
             pos,
         ))

@@ -3,21 +3,22 @@ use std::fmt::{Display, Write};
 use crate::{
     nodes::{
         AssignNode, BinaryOpNode, FunCallNode, IfNode, LetNode, ProcDefNode, ReturnNode,
-        StructDefNode, VariableNode,
+        StructDefNode, StructInstanceNode, VariableNode,
     },
     token::{LiteralType, Token},
 };
 
 #[derive(Debug, Clone)]
 pub enum Expression {
+    IfStatement(IfNode),
     LetStatement(LetNode),
     AssignStatement(AssignNode),
     ReturnStatement(ReturnNode),
-    IfStatement(IfNode),
+    Variable(VariableNode),
     ProcDef(ProcDefNode),
     FunCall(FunCallNode),
-    Variable(VariableNode),
     StructDef(StructDefNode),
+    StructInstance(StructInstanceNode),
     BinaryOp(BinaryOpNode),
     Literal(Token, LiteralType),
 }
@@ -25,16 +26,6 @@ pub enum Expression {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::LetStatement(let_node) => {
-                f.write_fmt(format_args!("Let('{}': {})", let_node.name, let_node.value))
-            }
-            Expression::AssignStatement(assign_node) => {
-                let name = assign_node.value.metadata.name.clone();
-                f.write_fmt(format_args!("Assign('{name}': {})", assign_node.new_value))
-            }
-            Expression::ReturnStatement(return_node) => {
-                f.write_fmt(format_args!("Return({})", return_node.value))
-            }
             Expression::IfStatement(if_node) => {
                 let mut statements = String::new();
                 if !if_node.statements.is_empty() {
@@ -51,6 +42,20 @@ impl Display for Expression {
 
                 f.write_fmt(format_args!("If({}: [{statements}])", if_node.value))
             }
+            Expression::LetStatement(let_node) => {
+                f.write_fmt(format_args!("Let('{}': {})", let_node.name, let_node.value))
+            }
+            Expression::AssignStatement(assign_node) => {
+                let name = assign_node.value.metadata.name.clone();
+                f.write_fmt(format_args!("Assign('{name}': {})", assign_node.new_value))
+            }
+            Expression::ReturnStatement(return_node) => {
+                f.write_fmt(format_args!("Return({})", return_node.value))
+            }
+            Expression::Variable(var) => f.write_fmt(format_args!(
+                "Variable('{}': {})",
+                var.metadata.name, var.value,
+            )),
             Expression::ProcDef(proc_def) => {
                 let mut arguments = String::new();
                 if !proc_def.args.is_empty() {
@@ -109,10 +114,6 @@ impl Display for Expression {
                 let name = fun_call_node.proc_def.name.clone();
                 f.write_fmt(format_args!("FunCall('{name}': args: [{arguments}])"))
             }
-            Expression::Variable(var) => f.write_fmt(format_args!(
-                "Variable('{}': {})",
-                var.metadata.name, var.value,
-            )),
             Expression::StructDef(struct_def) => {
                 let mut fields = String::new();
                 if !struct_def.fields.is_empty() {
@@ -127,6 +128,25 @@ impl Display for Expression {
                 f.write_fmt(format_args!(
                     "StructDef('{}': fields: [{fields}])\n",
                     struct_def.type_name
+                ))
+            }
+            Expression::StructInstance(struct_instance_node) => {
+                let mut fields = String::new();
+                if !struct_instance_node.fields.is_empty() {
+                    fields.push('\n');
+                }
+                for field in struct_instance_node.fields.iter() {
+                    fields
+                        .write_fmt(format_args!("\t\t\t{}: {},\n", field.metadata.name, field.value))
+                        .unwrap();
+                }
+                if !struct_instance_node.fields.is_empty() {
+                    fields.push_str("\t\t");
+                }
+
+                f.write_fmt(format_args!(
+                    "Struct('{}': fields: [{fields}])",
+                    struct_instance_node.struct_def.type_name
                 ))
             }
             Expression::BinaryOp(binary_op_node) => f.write_fmt(format_args!(

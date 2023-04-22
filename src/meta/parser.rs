@@ -5,7 +5,7 @@ use crate::{
     lexer::Lexer,
     nodes::{
         AssignNode, BinaryOp, BinaryOpNode, FunCallNode, IfNode, LetNode, ProcDefNode, ReturnNode,
-        StructDefNode, VarDefNode, VariableNode,
+        StructDefNode, StructInstanceNode, VarMetadataNode, VariableNode,
     },
     token::{LiteralType, Token, TokenType},
 };
@@ -17,6 +17,7 @@ pub struct Parser {
     program: Program,
     variables: Vec<VariableNode>,
     procedures: Vec<ProcDefNode>,
+    structs: Vec<StructDefNode>,
 }
 
 impl Parser {
@@ -26,6 +27,7 @@ impl Parser {
             program: Program::new(),
             variables: Vec::new(),
             procedures: Vec::new(),
+            structs: Vec::new(),
         }
     }
 
@@ -59,18 +61,7 @@ impl Parser {
     fn parse_expr(&mut self, token: &Token) -> Option<Expression> {
         type TT = TokenType;
 
-        if self
-            .variables
-            .iter()
-            .any(|v| v.metadata.name == token.value)
-            || self.procedures.iter().any(|f| f.name == token.value)
-        {
-            if let Some(ident) = self.visit_identifier(token) {
-                return self.visit_binary_op(Some(ident));
-            }
-        }
-
-        match token.kind.clone() {
+        match token.kind {
             TT::If => self.visit_if_statement(),
             TT::Let => self.visit_let_statement(),
             TT::Return => self.visit_return_statement(),
@@ -164,23 +155,36 @@ impl Parser {
                 if let Some(value) = self.parse_expr(&first) {
                     let name = ident.value;
                     let value = Box::new(value);
+                    let mut kind_str = String::new();
+
                     let kind = match first.kind {
-                        TokenType::Literal(lt) => lt,
+                        TokenType::Literal(lt) => {
+                            kind_str = self.string_from_literal_type(lt);
+                            lt
+                        },
                         TokenType::Ident => {
                             if let Some(var) = self
                                 .variables
                                 .iter()
                                 .find(|&v| v.metadata.name == first.value)
                             {
-                                var.metadata.kind.clone()
+                                kind_str = self.string_from_literal_type(var.metadata.kind);
+                                var.metadata.kind
                             } else if let Some(proc_def) =
                                 self.procedures.iter().find(|&f| f.name == first.value)
                             {
                                 if let Some(rt) = proc_def.return_type.clone() {
-                                    self.literal_type_from_string(rt)
+                                    let lt = self.literal_type_from_string(rt.clone());
+                                    kind_str = rt;
+                                    lt
                                 } else {
                                     LiteralType::None
                                 }
+                            } else if let Some(struct_def) =
+                                self.structs.iter().find(|&s| s.type_name == first.value)
+                            {
+                                kind_str = struct_def.type_name.clone();
+                                LiteralType::None
                             } else {
                                 LiteralType::None
                             }
@@ -189,8 +193,6 @@ impl Parser {
                     };
 
                     if let Some(_type) = type_hint {
-                        let kind_str = self.string_from_literal_type(kind.clone());
-
                         if kind_str != _type {
                             println!(
                                 "<{}> Error: expected {_type} found '{kind_str}'",
@@ -202,7 +204,7 @@ impl Parser {
                     let variable = self.make_variable(name.clone(), kind, value.clone());
                     self.variables.push(variable);
 
-                    let let_node = LetNode { name, value };
+                    let let_node = LetNode { name, kind, value };
 
                     return Some(Expression::LetStatement(let_node));
                 }
@@ -257,6 +259,8 @@ impl Parser {
 
                         if let Some(expr) = self.parse_expr(&next) {
                             statements.push(expr);
+                        } else {
+                            break;
                         }
                     }
                 }
@@ -267,6 +271,7 @@ impl Parser {
                         .iter()
                         .position(|v| v.metadata.name == arg.name)
                         .unwrap();
+
                     self.variables.remove(pos);
                 }
 
@@ -286,7 +291,7 @@ impl Parser {
         None
     }
 
-    fn visit_args(&mut self, args: &mut Vec<VarDefNode>) {
+    fn visit_args(&mut self, args: &mut Vec<VarMetadataNode>) {
         while let Some(ident) = self.lexer.next() {
             if let TokenType::Cparen = ident.kind {
                 break;
@@ -299,9 +304,9 @@ impl Parser {
 
             let kind = self.literal_type_from_string(type_name.value);
 
-            let arg = VarDefNode {
+            let arg = VarMetadataNode {
                 name: ident.value,
-                kind: kind.clone(),
+                kind,
             };
 
             args.push(arg.clone());
@@ -376,6 +381,65 @@ impl Parser {
             };
 
             return self.visit_binary_op(Some(Expression::FunCall(fun_call_node)));
+        } else if let Some(struct_def) = self
+            .structs
+            .clone()
+            .iter()
+            .find(|&s| s.type_name == token.value)
+        {
+            if let Some(_ocurly) = self.lexer.next() {
+                let mut fields = Vec::new();
+                let mut i = 0;
+
+                while self.lexer.valid() {
+                    if let Some(field) = self.lexer.next() {
+                        if let TokenType::Ccurly = field.kind {
+                            break;
+                        } else if field.kind != TokenType::Ident {
+                            println!(
+                                "<{}> Error: expected identifier found '{:?}'",
+                                field.position, field.kind
+                            );
+
+                            break;
+                        }
+
+                        let _colon = self.lexer.next().unwrap();
+
+                        let first = self.lexer.next().unwrap();
+                        if let Some(value) = self.parse_expr(&first) {
+                            let field = self.make_variable(
+                                struct_def.fields[i].name.clone(),
+                                struct_def.fields[i].kind,
+                                Box::new(value),
+                            );
+
+                            fields.push(field);
+                            i += 1;
+                        }
+                    }
+
+                    if self.lexer.character() == ',' {
+                        let _comma = self.lexer.next().unwrap();
+                    }
+
+                    if let Some(c) = self.lexer.peek_char() {
+                        if c == '}' {
+                            let _ccurly = self.lexer.next().unwrap();
+                            break;
+                        }
+                    }
+                }
+
+                let _semicolon = self.lexer.next().unwrap();
+
+                let struct_instance_node = StructInstanceNode {
+                    struct_def: struct_def.clone(),
+                    fields,
+                };
+
+                return Some(Expression::StructInstance(struct_instance_node));
+            }
         } else {
             println!(
                 "<{}> Error: expected identifier found '{}'",
@@ -400,6 +464,7 @@ impl Parser {
                                 "<{}> Error: expected identifier found '{:?}'",
                                 field.position, field.kind
                             );
+
                             break;
                         }
 
@@ -407,7 +472,7 @@ impl Parser {
 
                         if let Some(type_name) = self.lexer.next() {
                             let literal_type = self.literal_type_from_string(type_name.value);
-                            let var = VarDefNode {
+                            let var = VarMetadataNode {
                                 name: field.value,
                                 kind: literal_type,
                             };
@@ -432,6 +497,8 @@ impl Parser {
                     fields,
                 };
 
+                self.structs.push(struct_def.clone());
+
                 return Some(Expression::StructDef(struct_def));
             }
         }
@@ -452,7 +519,7 @@ impl Parser {
             let op = self.token_type_to_binary_op(op_token.kind);
 
             let next = self.lexer.next().unwrap();
-            if let TokenType::Literal(lt) = next.kind.clone() {
+            if let TokenType::Literal(lt) = next.kind {
                 let rhs = Box::new(Expression::Literal(next, lt));
 
                 if let Some(lhs) = ex {
@@ -464,7 +531,7 @@ impl Parser {
 
                     ex = Some(Expression::BinaryOp(binary_op_node));
                 }
-            } else if let TokenType::Ident = next.kind.clone() {
+            } else if let TokenType::Ident = next.kind {
                 if let Some(var) = self
                     .variables
                     .iter()
@@ -491,26 +558,31 @@ impl Parser {
     fn default_construct_value(&self, kind: LiteralType) -> Box<Expression> {
         let token = match kind {
             LiteralType::Char => Token::from(
-                TokenType::Literal(LiteralType::Char),
+                TokenType::Literal(kind),
                 String::from(""),
                 self.lexer.get_cursor_pos(),
             ),
             LiteralType::Bool => Token::from(
-                TokenType::Literal(LiteralType::Bool),
+                TokenType::Literal(kind),
                 String::from("false"),
                 self.lexer.get_cursor_pos(),
             ),
             LiteralType::Number => Token::from(
-                TokenType::Literal(LiteralType::Number),
+                TokenType::Literal(kind),
                 String::from("0"),
                 self.lexer.get_cursor_pos(),
             ),
+            LiteralType::Float => Token::from(
+                TokenType::Literal(kind),
+                String::from("0.0"),
+                self.lexer.get_cursor_pos(),
+            ),
             LiteralType::String => Token::from(
-                TokenType::Literal(LiteralType::String),
+                TokenType::Literal(kind),
                 String::from(""),
                 self.lexer.get_cursor_pos(),
             ),
-            _ => todo!(),
+            _ => panic!("unimplemented literal type"),
         };
 
         let expr = Expression::Literal(token, kind);
@@ -524,7 +596,7 @@ impl Parser {
         value: Box<Expression>,
     ) -> VariableNode {
         VariableNode {
-            metadata: VarDefNode { name, kind },
+            metadata: VarMetadataNode { name, kind },
             value,
         }
     }
@@ -535,6 +607,7 @@ impl Parser {
             "Char" => "char",
             "Bool" => "bool",
             "Number" => "i32",
+            "Float" => "f32",
             kind => kind,
         };
 
@@ -546,6 +619,7 @@ impl Parser {
             "char" => LiteralType::Char,
             "bool" => LiteralType::Bool,
             "i32" => LiteralType::Number,
+            "f32" => LiteralType::Float,
             "String" => LiteralType::String,
             _ => LiteralType::None,
         }
@@ -554,10 +628,10 @@ impl Parser {
     fn token_type_to_binary_op(&self, kind: TokenType) -> BinaryOp {
         type TT = TokenType;
         match kind {
-            TT::Plus => BinaryOp::Add,
-            TT::Minus => BinaryOp::Sub,
-            TT::Multiply => BinaryOp::Mul,
-            TT::Divide => BinaryOp::Div,
+            TT::Add => BinaryOp::Add,
+            TT::Sub => BinaryOp::Sub,
+            TT::Mul => BinaryOp::Mul,
+            TT::Div => BinaryOp::Div,
             TT::Eq => BinaryOp::Eq,
             TT::Ne => BinaryOp::Ne,
             TT::Lt => BinaryOp::Lt,
