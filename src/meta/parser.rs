@@ -161,7 +161,7 @@ impl Parser {
                         TokenType::Literal(lt) => {
                             kind_str = self.string_from_literal_type(lt);
                             lt
-                        },
+                        }
                         TokenType::Ident => {
                             if let Some(var) = self
                                 .variables

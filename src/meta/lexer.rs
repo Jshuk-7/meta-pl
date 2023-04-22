@@ -214,7 +214,7 @@ impl Lexer {
     fn parse_digit_token(&mut self, pos: Position) -> Option<Token> {
         let start = self.cursor;
         let mut c = self.character();
-        
+
         let mut is_float = false;
         while self.valid() && c.is_ascii_digit() {
             self.advance();
@@ -227,14 +227,14 @@ impl Lexer {
             }
         }
 
-        let lt = if is_float { LiteralType::Float } else { LiteralType::Number };
+        let lt = if is_float {
+            LiteralType::Float
+        } else {
+            LiteralType::Number
+        };
 
         let value = String::from(&self.source[start..self.cursor]);
-        Some(Token::from(
-            TokenType::Literal(lt),
-            value,
-            pos,
-        ))
+        Some(Token::from(TokenType::Literal(lt), value, pos))
     }
 }
 

@@ -38,19 +38,18 @@ impl Executor {
     }
 
     fn find_startup_proc(program: Program, target: &str) -> Option<ProcDefNode> {
-        if let Expression::ProcDef(proc_def_node) = program
-            .iter()
-            .find(move |&expr| {
-                if let Expression::ProcDef(ProcDefNode { name, .. }) = expr {
-                    name == target
-                } else {
-                    false
-                }
-            })
-            .unwrap()
-            .clone()
-        {
-            return Some(proc_def_node);
+        let expr = program.iter().find(move |&expr| {
+            if let Expression::ProcDef(ProcDefNode { name, .. }) = expr {
+                name == target
+            } else {
+                false
+            }
+        });
+
+        if let Some(proc) = expr {
+            if let Expression::ProcDef(proc_def_node) = proc {
+                return Some(proc_def_node.clone());
+            }
         }
 
         println!("Error: failed to find entry point '{target}'");

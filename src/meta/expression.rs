@@ -137,7 +137,10 @@ impl Display for Expression {
                 }
                 for field in struct_instance_node.fields.iter() {
                     fields
-                        .write_fmt(format_args!("\t\t\t{}: {},\n", field.metadata.name, field.value))
+                        .write_fmt(format_args!(
+                            "\t\t\t{}: {},\n",
+                            field.metadata.name, field.value
+                        ))
                         .unwrap();
                 }
                 if !struct_instance_node.fields.is_empty() {
