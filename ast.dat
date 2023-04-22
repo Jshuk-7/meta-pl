@@ -1,11 +1,28 @@
+StructDef('Program': fields: [
+	name: String,
+	instruction_count: Number,
+])
+
+ProcDef('new_program':
+	return_type: Program
+	args: []
+	content: [
+		Let('program': Struct('Program': fields: [
+			name: Literal('Script.mt': String),
+			instruction_count: Literal('1': Number),
+		]))
+		Return(Variable('program': Struct('Program': fields: [
+			name: Literal('Script.mt': String),
+			instruction_count: Literal('1': Number),
+		])))
+	]
+)
+
 ProcDef('main':
 	return_type: None
 	args: []
 	content: [
-		Let('a': Literal('false': Bool))
-		If(Literal('false': Bool): [
-			Let('b': Literal('10': Number))
-		])
+		Let('program': FunCall('new_program': args: []))
 	]
 )
 
