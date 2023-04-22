@@ -1,8 +1,8 @@
 use crate::token::{LiteralType, Position, Token, TokenType};
 
 pub struct Lexer {
-    chars: Vec<char>,
     filename: String,
+    chars: Vec<char>,
     source: String,
     cursor: usize,
     row: usize,
@@ -12,8 +12,8 @@ pub struct Lexer {
 impl Lexer {
     pub fn new(source: String, filename: String) -> Self {
         Self {
-            chars: source.clone().chars().collect(),
             filename,
+            chars: source.clone().chars().collect(),
             source,
             cursor: 0,
             row: 0,

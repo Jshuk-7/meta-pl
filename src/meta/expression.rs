@@ -2,8 +2,8 @@ use std::fmt::{Display, Write};
 
 use crate::{
     nodes::{
-        AssignNode, BinaryOpNode, FunCallNode, IfNode, LetNode, ProcDefNode, StructDefNode,
-        VariableNode, ReturnNode,
+        AssignNode, BinaryOpNode, FunCallNode, IfNode, LetNode, ProcDefNode, ReturnNode,
+        StructDefNode, VariableNode,
     },
     token::{LiteralType, Token},
 };
@@ -109,9 +109,10 @@ impl Display for Expression {
                 let name = fun_call_node.proc_def.name.clone();
                 f.write_fmt(format_args!("FunCall('{name}': args: [{arguments}])"))
             }
-            Expression::Variable(var) => {
-                f.write_fmt(format_args!("Variable('{}': {})", var.metadata.name, var.value,))
-            }
+            Expression::Variable(var) => f.write_fmt(format_args!(
+                "Variable('{}': {})",
+                var.metadata.name, var.value,
+            )),
             Expression::StructDef(struct_def) => {
                 let mut fields = String::new();
                 if !struct_def.fields.is_empty() {

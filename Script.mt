@@ -1,12 +1,11 @@
-proc print(msg: String) {
-    
+proc do_work() {
+    let b = 2;
+    b = 5;
 }
 
 proc main() {
-    if 1 == 2 {
-        let a = 10;
-    }
+    let a = 10;
+    a = 12;
 
-    let name = "Jackson";
-    print(name);
+    do_work();
 }

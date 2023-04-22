@@ -1,4 +1,4 @@
-use std::{fs::File, path::Path, borrow::BorrowMut, any::Any};
+use std::{any::Any, borrow::BorrowMut, fs::File, path::Path, string::ParseError};
 
 use crate::{
     expression::Expression,
@@ -29,40 +29,40 @@ impl Parser {
         }
     }
 
-    pub fn from_file<P: AsRef<Path> + Clone>(path: P) -> Option<Self> {
-        if let Ok(source) = std::fs::read_to_string(path.clone()) {
-            let lexer = Lexer::new(
-                source,
-                path.as_ref()
-                    .file_name()
-                    .unwrap()
-                    .to_os_string()
-                    .into_string()
-                    .unwrap(),
-            );
+    pub fn from_file<P: AsRef<Path> + Clone>(path: P) -> std::io::Result<Self> {
+        let source = std::fs::read_to_string(path.clone())?;
+        let filename = path
+            .as_ref()
+            .file_name()
+            .unwrap()
+            .to_os_string()
+            .into_string()
+            .unwrap();
 
-            return Some(Self::new(lexer));
-        }
+        let lexer = Lexer::new(source, filename);
+        let this = Self::new(lexer);
 
-        None
+        Ok(this)
     }
 
-    pub fn make_program(&mut self) {
+    pub fn parse_program(&mut self) -> Result<Program, ParseError> {
         while let Some(token) = &self.lexer.next() {
-            if let TokenType::Semicolon = token.kind {
-                continue;
-            } else if let Some(expr) = self.parse_expr(token) {
+            if let Some(expr) = self.parse_expr(token) {
                 self.program.push(expr);
             }
         }
 
         self.write_to_file("ast.dat");
+        Ok(self.program.clone())
     }
 
     fn parse_expr(&mut self, token: &Token) -> Option<Expression> {
         type TT = TokenType;
 
-        if self.variables.iter().any(|v| v.metadata.name == token.value)
+        if self
+            .variables
+            .iter()
+            .any(|v| v.metadata.name == token.value)
             || self.procedures.iter().any(|f| f.name == token.value)
         {
             if let Some(ident) = self.visit_identifier(token) {
@@ -167,8 +167,10 @@ impl Parser {
                     let kind = match first.kind {
                         TokenType::Literal(lt) => lt,
                         TokenType::Ident => {
-                            if let Some(var) =
-                                self.variables.iter().find(|&v| v.metadata.name == first.value)
+                            if let Some(var) = self
+                                .variables
+                                .iter()
+                                .find(|&v| v.metadata.name == first.value)
                             {
                                 var.metadata.kind.clone()
                             } else if let Some(proc_def) =
@@ -305,7 +307,10 @@ impl Parser {
             args.push(arg.clone());
 
             let value = self.default_construct_value(kind);
-            let var = VariableNode { metadata: arg, value };
+            let var = VariableNode {
+                metadata: arg,
+                value,
+            };
             self.variables.push(var);
         }
     }
@@ -325,20 +330,8 @@ impl Parser {
                         if let Some(expr) = self.parse_expr(&next) {
                             let new_value = Box::new(expr);
 
-                            let mut variable = var.clone();
-                            variable.value = new_value.clone();
-
-                            if let Some(pos) = self
-                                .variables
-                                .iter()
-                                .position(|v| v.metadata.name == variable.metadata.name)
-                            {
-                                self.variables.remove(pos);
-                                self.variables.insert(pos, variable.clone());
-                            }
-
                             let assign_node = AssignNode {
-                                value: variable,
+                                value: var.clone(),
                                 new_value,
                             };
 
@@ -472,7 +465,11 @@ impl Parser {
                     ex = Some(Expression::BinaryOp(binary_op_node));
                 }
             } else if let TokenType::Ident = next.kind.clone() {
-                if let Some(var) = self.variables.iter().find(|&v| v.metadata.name == next.value) {
+                if let Some(var) = self
+                    .variables
+                    .iter()
+                    .find(|&v| v.metadata.name == next.value)
+                {
                     let rhs = Box::new(Expression::Variable(var.clone()));
 
                     if let Some(lhs) = ex {
@@ -492,38 +489,29 @@ impl Parser {
     }
 
     fn default_construct_value(&self, kind: LiteralType) -> Box<Expression> {
-        let token;
-        match kind {
-            LiteralType::Char => {
-                token = Token::from(
-                    TokenType::Literal(LiteralType::Char),
-                    String::from(""),
-                    self.lexer.get_cursor_pos(),
-                );
-            }
-            LiteralType::Bool => {
-                token = Token::from(
-                    TokenType::Literal(LiteralType::Bool),
-                    String::from("false"),
-                    self.lexer.get_cursor_pos(),
-                );
-            }
-            LiteralType::Number => {
-                token = Token::from(
-                    TokenType::Literal(LiteralType::Number),
-                    String::from("0"),
-                    self.lexer.get_cursor_pos(),
-                );
-            }
-            LiteralType::String => {
-                token = Token::from(
-                    TokenType::Literal(LiteralType::String),
-                    String::from(""),
-                    self.lexer.get_cursor_pos(),
-                );
-            }
+        let token = match kind {
+            LiteralType::Char => Token::from(
+                TokenType::Literal(LiteralType::Char),
+                String::from(""),
+                self.lexer.get_cursor_pos(),
+            ),
+            LiteralType::Bool => Token::from(
+                TokenType::Literal(LiteralType::Bool),
+                String::from("false"),
+                self.lexer.get_cursor_pos(),
+            ),
+            LiteralType::Number => Token::from(
+                TokenType::Literal(LiteralType::Number),
+                String::from("0"),
+                self.lexer.get_cursor_pos(),
+            ),
+            LiteralType::String => Token::from(
+                TokenType::Literal(LiteralType::String),
+                String::from(""),
+                self.lexer.get_cursor_pos(),
+            ),
             _ => todo!(),
-        }
+        };
 
         let expr = Expression::Literal(token, kind);
         Box::new(expr)
@@ -588,9 +576,14 @@ impl Parser {
             use std::fmt::Write;
             use std::io::Write as W;
 
+            /* for custom ast */
             for expr in self.program.iter() {
                 content.write_fmt(format_args!("{}\n", expr)).unwrap();
             }
+
+            // content
+            //     .write_fmt(format_args!("{program:#?}", program = self.program))
+            //     .unwrap();
 
             file.write_all(content.as_bytes()).unwrap();
         }

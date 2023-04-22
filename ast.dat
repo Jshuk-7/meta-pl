@@ -1,22 +1,19 @@
-ProcDef('print':
+ProcDef('do_work':
 	return_type: None
-	args: [
-		msg: String,
+	args: []
+	content: [
+		Let('b': Literal('2': Number))
+		Assign('b': Literal('5': Number))
 	]
-	content: []
 )
 
 ProcDef('main':
 	return_type: None
 	args: []
 	content: [
-		If(BinaryOp(Literal('1': Number), Eq, Literal('2': Number)): [
-			Let('a': Literal('10': Number))
-		])
-		Let('name': Literal('Jackson': String))
-		FunCall('print': args: [
-			msg: Variable('name': Literal('Jackson': String))
-		])
+		Let('a': Literal('10': Number))
+		Assign('a': Literal('12': Number))
+		FunCall('do_work': args: [])
 	]
 )
 

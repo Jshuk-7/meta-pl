@@ -1,7 +1,5 @@
-use meta::parser::Parser;
+use meta::executor::Executor;
 
 fn main() {
-    if let Some(mut parser) = Parser::from_file("Script.mt") {
-        parser.make_program();
-    }
+    Executor::run("Script.mt");
 }
