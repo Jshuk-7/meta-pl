@@ -65,7 +65,7 @@ impl Display for Expression {
                 }
                 for arg in proc_def.args.iter() {
                     arguments
-                        .write_fmt(format_args!("\t\t{}: {:?},\n", arg.name, arg.kind))
+                        .write_fmt(format_args!("\t\t{}: {:?},\n", arg.name, arg.type_name))
                         .unwrap();
                 }
                 if !proc_def.args.is_empty() {
@@ -123,7 +123,7 @@ impl Display for Expression {
                 }
                 for field in struct_def.fields.iter() {
                     fields
-                        .write_fmt(format_args!("\t{}: {:?},\n", field.name, field.kind))
+                        .write_fmt(format_args!("\t{}: {:?},\n", field.name, field.type_name))
                         .unwrap();
                 }
 

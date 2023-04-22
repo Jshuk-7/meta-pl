@@ -4,8 +4,9 @@ use crate::{
     expression::Expression,
     lexer::Lexer,
     nodes::{
-        AssignNode, BinaryOp, BinaryOpNode, FieldAssignNode, FunCallNode, IfNode, LetNode,
-        ProcDefNode, ReturnNode, StructDefNode, StructInstanceNode, VarMetadataNode, VariableNode, FieldAccessNode,
+        AssignNode, BinaryOp, BinaryOpNode, FieldAccessNode, FieldAssignNode, FunCallNode, IfNode,
+        LetNode, ProcDefNode, ReturnNode, StructDefNode, StructInstanceNode, VarMetadataNode,
+        VariableNode,
     },
     token::{LiteralType, Token, TokenType},
 };
@@ -87,7 +88,7 @@ impl Parser {
                     None
                 }
                 Expression::Variable(mut var) => {
-                    if let LiteralType::Bool = var.metadata.kind {
+                    if var.metadata.type_name == "bool" {
                         let v: &mut Expression = var.value.borrow_mut();
                         let any: &dyn Any = v;
                         match any.downcast_ref::<Expression>() {
@@ -157,41 +158,33 @@ impl Parser {
                 if let Some(value) = self.parse_expr(&first) {
                     let name = ident.value;
                     let value = Box::new(value);
-                    let mut kind_str = String::new();
 
-                    let kind = match first.kind {
-                        TokenType::Literal(lt) => {
-                            kind_str = self.string_from_literal_type(lt);
-                            lt
-                        }
+                    let kind_str = match first.kind {
+                        TokenType::Literal(lt) => self.string_from_literal_type(lt),
                         TokenType::Ident => {
                             if let Some(var) = self
                                 .variables
                                 .iter()
                                 .find(|&v| v.metadata.name == first.value)
                             {
-                                kind_str = self.string_from_literal_type(var.metadata.kind);
-                                var.metadata.kind
+                                var.metadata.type_name.clone()
                             } else if let Some(proc_def) =
                                 self.procedures.iter().find(|&f| f.name == first.value)
                             {
-                                if let Some(rt) = proc_def.return_type.clone() {
-                                    let lt = self.literal_type_from_string(rt.clone());
-                                    kind_str = rt;
-                                    lt
+                                if let Some(return_type) = proc_def.return_type.clone() {
+                                    return_type
                                 } else {
-                                    LiteralType::None
+                                    "None".to_string()
                                 }
                             } else if let Some(struct_def) =
                                 self.structs.iter().find(|&s| s.type_name == first.value)
                             {
-                                kind_str = struct_def.type_name.clone();
-                                LiteralType::None
+                                struct_def.type_name.clone()
                             } else {
-                                LiteralType::None
+                                "None".to_string()
                             }
                         }
-                        _ => LiteralType::None,
+                        _ => "None".to_string(),
                     };
 
                     if let Some(hint) = type_hint {
@@ -203,10 +196,14 @@ impl Parser {
                         }
                     }
 
-                    let variable = self.make_variable(name.clone(), kind, value.clone());
+                    let variable = self.make_variable(name.clone(), kind_str.clone(), value.clone());
                     self.variables.push(variable);
 
-                    let let_node = LetNode { name, kind, value };
+                    let let_node = LetNode {
+                        name,
+                        type_name: kind_str,
+                        value,
+                    };
 
                     return Some(Expression::LetStatement(let_node));
                 }
@@ -304,20 +301,19 @@ impl Parser {
             let _colon = self.lexer.next().unwrap();
             let type_name = self.lexer.next().unwrap();
 
-            let kind = self.literal_type_from_string(type_name.value);
-
             let arg = VarMetadataNode {
                 name: ident.value,
-                kind,
+                type_name: type_name.value.clone(),
             };
 
             args.push(arg.clone());
 
-            let value = self.default_construct_value(kind);
+            let value = self.default_initialize_value(type_name.value);
             let var = VariableNode {
                 metadata: arg,
-                value,
+                value: Box::new(value),
             };
+
             self.variables.push(var);
         }
     }
@@ -412,7 +408,7 @@ impl Parser {
 
                 if let Some(value) = self.parse_expr(&potential_arg) {
                     let var = proc_def.args[i].clone();
-                    let variable = self.make_variable(var.name, var.kind, Box::new(value));
+                    let variable = self.make_variable(var.name, var.type_name, Box::new(value));
 
                     args.push(variable);
 
@@ -451,11 +447,10 @@ impl Parser {
 
                     let first = self.lexer.next().unwrap();
                     if let Some(value) = self.parse_expr(&first) {
-                        let field = self.make_variable(
-                            struct_def.fields[i].name.clone(),
-                            struct_def.fields[i].kind,
-                            Box::new(value),
-                        );
+                        let name = struct_def.fields[i].name.clone();
+                        let type_name = struct_def.fields[i].type_name.clone();
+
+                        let field = self.make_variable(name, type_name, Box::new(value));
 
                         fields.push(field);
                         i += 1;
@@ -501,7 +496,7 @@ impl Parser {
                         if let Some(c) = self.lexer.peek_char() {
                             if c == '=' {
                                 let _equal_op = self.lexer.next().unwrap();
-        
+
                                 let next = self.lexer.next().unwrap();
                                 if let Some(value) = self.parse_expr(&next) {
                                     let field_assign_node = FieldAssignNode {
@@ -509,7 +504,7 @@ impl Parser {
                                         field: field.clone(),
                                         new_value: Box::new(value),
                                     };
-        
+
                                     return Some(Expression::StructFieldAssign(field_assign_node));
                                 }
                             } else {
@@ -518,7 +513,7 @@ impl Parser {
                                     field: field.clone(),
                                 };
 
-                                return Some(Expression::StructFieldAccess(field_access_node));
+                                return self.visit_binary_op(Some(Expression::StructFieldAccess(field_access_node)));
                             }
                         }
                     }
@@ -550,10 +545,9 @@ impl Parser {
                         let _colon = self.lexer.next().unwrap();
 
                         if let Some(type_name) = self.lexer.next() {
-                            let literal_type = self.literal_type_from_string(type_name.value);
                             let var = VarMetadataNode {
                                 name: field.value,
-                                kind: literal_type,
+                                type_name: type_name.value,
                             };
 
                             fields.push(var);
@@ -634,48 +628,93 @@ impl Parser {
         ex
     }
 
-    fn default_construct_value(&self, kind: LiteralType) -> Box<Expression> {
-        let token = match kind {
-            LiteralType::Char => Token::from(
-                TokenType::Literal(kind),
-                String::from(""),
-                self.lexer.get_cursor_pos(),
-            ),
-            LiteralType::Bool => Token::from(
-                TokenType::Literal(kind),
-                String::from("false"),
-                self.lexer.get_cursor_pos(),
-            ),
-            LiteralType::Number => Token::from(
-                TokenType::Literal(kind),
-                String::from("0"),
-                self.lexer.get_cursor_pos(),
-            ),
-            LiteralType::Float => Token::from(
-                TokenType::Literal(kind),
-                String::from("0.0"),
-                self.lexer.get_cursor_pos(),
-            ),
-            LiteralType::String => Token::from(
-                TokenType::Literal(kind),
-                String::from(""),
-                self.lexer.get_cursor_pos(),
-            ),
+    fn default_initialize_value(&mut self, type_name: String) -> Expression {
+        if let Some(struct_def_node) = self
+            .structs
+            .clone()
+            .iter()
+            .find(|&s| s.type_name == type_name)
+        {
+            return self.default_initialize_struct(struct_def_node);
+        }
+
+        let kind;
+        let token = match type_name.as_str() {
+            "char" => {
+                kind = LiteralType::Char;
+                Token::from(
+                    TokenType::Literal(kind),
+                    String::from(""),
+                    self.lexer.get_cursor_pos(),
+                )
+            }
+            "bool" => {
+                kind = LiteralType::Bool;
+                Token::from(
+                    TokenType::Literal(kind),
+                    String::from("false"),
+                    self.lexer.get_cursor_pos(),
+                )
+            }
+            "i32" => {
+                kind = LiteralType::Number;
+                Token::from(
+                    TokenType::Literal(kind),
+                    String::from("0"),
+                    self.lexer.get_cursor_pos(),
+                )
+            }
+            "f32" => {
+                kind = LiteralType::Float;
+                Token::from(
+                    TokenType::Literal(kind),
+                    String::from("0.0"),
+                    self.lexer.get_cursor_pos(),
+                )
+            }
+            "String" => {
+                kind = LiteralType::String;
+                Token::from(
+                    TokenType::Literal(kind),
+                    String::from(""),
+                    self.lexer.get_cursor_pos(),
+                )
+            }
             _ => panic!("unimplemented literal type"),
         };
 
-        let expr = Expression::Literal(token, kind);
-        Box::new(expr)
+        Expression::Literal(token, kind)
+    }
+
+    fn default_initialize_struct(&mut self, struct_def_node: &StructDefNode) -> Expression {
+        let mut fields = Vec::new();
+
+        for field in struct_def_node.fields.clone().iter() {
+            let field_name = field.name.clone();
+            let type_name = field.type_name.clone();
+
+            let value = self.default_initialize_value(type_name.clone());
+            let variable = self.make_variable(field_name, type_name, Box::new(value));
+
+            fields.push(variable);
+        }
+
+        let struct_instance_node = StructInstanceNode {
+            struct_def: struct_def_node.clone(),
+            fields,
+        };
+
+        return Expression::StructInstance(struct_instance_node);
     }
 
     fn make_variable(
         &self,
         name: String,
-        kind: LiteralType,
+        type_name: String,
         value: Box<Expression>,
     ) -> VariableNode {
         VariableNode {
-            metadata: VarMetadataNode { name, kind },
+            metadata: VarMetadataNode { name, type_name },
             value,
         }
     }

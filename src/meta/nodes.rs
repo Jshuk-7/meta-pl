@@ -1,4 +1,4 @@
-use crate::{expression::Expression, token::LiteralType};
+use crate::expression::Expression;
 
 #[derive(Debug, Clone)]
 pub enum BinaryOp {
@@ -25,7 +25,7 @@ pub struct IfNode {
 #[derive(Debug, Clone)]
 pub struct LetNode {
     pub name: String,
-    pub kind: LiteralType,
+    pub type_name: String,
     pub value: Box<Expression>,
 }
 
@@ -43,7 +43,7 @@ pub struct ReturnNode {
 #[derive(Debug, Clone)]
 pub struct VarMetadataNode {
     pub name: String,
-    pub kind: LiteralType,
+    pub type_name: String,
 }
 
 #[derive(Debug, Clone)]

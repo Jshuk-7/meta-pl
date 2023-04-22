@@ -66,7 +66,7 @@ impl Executor {
             Expression::LetStatement(let_node) => {
                 let metadata = VarMetadataNode {
                     name: let_node.name.clone(),
-                    kind: let_node.kind,
+                    type_name: let_node.type_name.clone(),
                 };
 
                 let var = VariableNode {

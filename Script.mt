@@ -3,12 +3,13 @@ struct Person {
     age: i32,
 }
 
+proc do_work(p: Person) {
+    p.name = "Jack";
+}
+
 proc main() {
     let person: Person = Person { name: "Jack", age: 22 };
-    person.name = "Fred";
-    
-    person.age = 12;
+    person.age = person.age + 1;
 
-    let name = person.name;
-    let age = person.age;
+    do_work(person);
 }
