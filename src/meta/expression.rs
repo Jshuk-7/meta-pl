@@ -2,8 +2,9 @@ use std::fmt::{Display, Write};
 
 use crate::{
     nodes::{
-        AssignNode, BinaryOpNode, FieldAccessNode, FieldAssignNode, FunCallNode, IfNode, LetNode,
-        ProcDefNode, ReturnNode, StructDefNode, StructInstanceNode, VariableNode, WhileNode, RangeNode, ForNode,
+        AssignNode, BinaryOpNode, FieldAccessNode, FieldAssignNode, ForNode, FunCallNode, IfNode,
+        LetNode, ProcDefNode, RangeNode, ReturnNode, StructDefNode, StructInstanceNode,
+        VariableNode, WhileNode,
     },
     token::{LiteralType, Token},
 };
@@ -53,7 +54,8 @@ impl Display for Expression {
                     statements.push('\n');
                 }
                 for statement in while_node.statements.iter() {
-                    statements.write_fmt(format_args!("\t\t\t{statement}\n"))
+                    statements
+                        .write_fmt(format_args!("\t\t\t{statement}\n"))
                         .unwrap();
                 }
                 if !while_node.statements.is_empty() {
@@ -68,17 +70,23 @@ impl Display for Expression {
                     statements.push('\n');
                 }
                 for statement in for_node.statements.iter() {
-                    statements.write_fmt(format_args!("\t\t\t{statement}\n")).unwrap()
+                    statements
+                        .write_fmt(format_args!("\t\t\t{statement}\n"))
+                        .unwrap()
                 }
                 if !for_node.statements.is_empty() {
                     statements.push_str("\t\t");
                 }
 
-                f.write_fmt(format_args!("For({}: {}: [{statements}])", for_node.counter.metadata.name, for_node.range))
+                f.write_fmt(format_args!(
+                    "For({}: {}: [{statements}])",
+                    for_node.counter.metadata.name, for_node.range
+                ))
             }
-            Expression::RangeStatement(range_node) => {
-                f.write_fmt(format_args!("Range({}..{})", range_node.start, range_node.end))
-            }
+            Expression::RangeStatement(range_node) => f.write_fmt(format_args!(
+                "Range({}..{})",
+                range_node.start, range_node.end
+            )),
             Expression::LetStatement(let_node) => {
                 f.write_fmt(format_args!("Let('{}': {})", let_node.name, let_node.value))
             }
