@@ -1,15 +1,12 @@
-struct Person {
-    name: String,
-    age: i32,
+struct Program {
+    name: String
 }
 
-proc do_work(p: Person) {
-    p.name = "Jack";
+proc process(p: Program): bool {
+    return p.name == "Hello";
 }
 
 proc main() {
-    let person: Person = Person { name: "Jack", age: 22 };
-    person.age = person.age + 1;
-
-    do_work(person);
+    let p = Program { name: "Hello world" };
+    process(p);
 }

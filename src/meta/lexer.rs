@@ -34,8 +34,12 @@ impl Lexer {
     }
 
     pub fn peek_char(&self) -> Option<char> {
-        if self.cursor + 1 < self.chars.len() {
-            return Some(self.chars[self.cursor + 1]);
+        self.peek_char_by_amount(1)
+    }
+
+    pub fn peek_char_by_amount(&self, amount: usize) -> Option<char> {
+        if self.cursor + amount < self.chars.len() {
+            return Some(self.chars[self.cursor + amount]);
         }
 
         None

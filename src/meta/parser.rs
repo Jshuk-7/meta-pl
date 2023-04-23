@@ -1,4 +1,4 @@
-use std::{any::Any, borrow::BorrowMut, fs::File, path::Path, string::ParseError};
+use std::{fs::File, path::Path, string::ParseError};
 
 use crate::{
     expression::Expression,
@@ -12,6 +12,30 @@ use crate::{
 };
 
 pub type Program = Vec<Expression>;
+
+struct Timer {
+    name: &'static str,
+    timer: std::time::Instant,
+}
+
+impl Timer {
+    fn start(name: &'static str) -> Self {
+        Self {
+            name,
+            timer: std::time::Instant::now(),
+        }
+    }
+}
+
+impl Drop for Timer {
+    fn drop(&mut self) {
+        println!(
+            "{} took {} microseconds",
+            self.name,
+            self.timer.elapsed().as_micros()
+        );
+    }
+}
 
 pub struct Parser {
     lexer: Lexer,
@@ -51,9 +75,13 @@ impl Parser {
     }
 
     pub fn parse_program(&mut self) -> Result<Program, ParseError> {
-        while let Some(token) = &self.lexer.next() {
-            if let Some(expr) = self.parse_expr(token) {
-                self.program.push(expr);
+        {
+            let _timer = Timer::start("Parsing");
+
+            while let Some(token) = &self.lexer.next() {
+                if let Some(expr) = self.parse_expr(token) {
+                    self.program.push(expr);
+                }
             }
         }
 
@@ -82,27 +110,7 @@ impl Parser {
     fn visit_if_statement(&mut self) -> Option<Expression> {
         let first = self.lexer.next().unwrap();
         if let Some(expr) = self.parse_expr(&first) {
-            let binary_op = match expr {
-                Expression::FunCall(_) => {
-                    // TODO verify that the proc has a return type and it is of type bool
-                    None
-                }
-                Expression::Variable(mut var) => {
-                    if var.metadata.type_name == "bool" {
-                        let v: &mut Expression = var.value.borrow_mut();
-                        let any: &dyn Any = v;
-                        match any.downcast_ref::<Expression>() {
-                            Some(expr) => self.visit_binary_op(Some(expr.clone())),
-                            None => None,
-                        }
-                    } else {
-                        None
-                    }
-                }
-                Expression::BinaryOp(_) => Some(expr),
-                Expression::Literal(..) => self.visit_binary_op(Some(expr)),
-                _ => None,
-            };
+            let binary_op = self.visit_boolean_expr(expr);
 
             binary_op.as_ref()?;
 
@@ -137,6 +145,31 @@ impl Parser {
         }
 
         None
+    }
+
+    fn visit_boolean_expr(&mut self, expr: Expression) -> Option<Expression> {
+        match expr.clone() {
+            Expression::FunCall(fun_call_node) => {
+                if let Some(return_type) = fun_call_node.proc_def.return_type {
+                    if return_type == "bool" {
+                        return self.visit_binary_op(Some(expr));
+                    }
+                }
+
+                None
+            }
+            Expression::Variable(variable_node) => {
+                if variable_node.metadata.type_name == "bool" {
+                    return self.visit_binary_op(Some(expr));
+                }
+
+                None
+            }
+            Expression::StructFieldAccess(..) => self.visit_binary_op(Some(expr)),
+            Expression::BinaryOp(..) => Some(expr),
+            Expression::Literal(..) => self.visit_binary_op(Some(expr)),
+            _ => None,
+        }
     }
 
     fn visit_let_statement(&mut self) -> Option<Expression> {
@@ -320,17 +353,37 @@ impl Parser {
     }
 
     fn visit_identifier(&mut self, token: &Token) -> Option<Expression> {
-        let mut field_token = None;
-
         if let Some(variable) = self
             .variables
             .clone()
             .iter()
             .find(|&v| v.metadata.name == token.value)
         {
-            let ret = self.get_variable(variable, &mut field_token);
-            if ret.is_some() {
-                return ret;
+            if let Some(c) = self.lexer.peek_char() {
+                if c == '=' {
+                    if let Some(_equal_op) = self.lexer.next() {
+                        let next = self.lexer.next().unwrap();
+
+                        if let Some(expr) = self.parse_expr(&next) {
+                            let new_value = Box::new(expr);
+
+                            let assign_node = AssignNode {
+                                value: variable.clone(),
+                                new_value,
+                            };
+
+                            return Some(Expression::AssignStatement(assign_node));
+                        }
+                    }
+                }
+            }
+
+            if self.lexer.character() == '.' {
+                let _period = self.lexer.next().unwrap();
+                let expr = self.visit_struct_field();
+                self.visit_binary_op(expr)
+            } else {
+                self.visit_binary_op(Some(Expression::Variable(variable.clone())))
             }
         } else if let Some(proc_def) = self
             .procedures
@@ -338,58 +391,87 @@ impl Parser {
             .iter()
             .find(|&f| f.name == token.value)
         {
-            return self.get_procedure(proc_def);
+            let expr = self.get_procedure(proc_def);
+            self.visit_binary_op(expr)
         } else if let Some(struct_def) = self
             .structs
             .clone()
             .iter()
             .find(|&s| s.type_name == token.value)
         {
-            return self.get_struct_instance(struct_def);
+            self.get_struct_instance(struct_def)
+        } else {
+            println!(
+                "<{}> Error: expected identifier found '{}'",
+                token.position, token.value
+            );
+
+            None
         }
-
-        let ret = self.get_or_assign_struct_field(field_token);
-        if ret.is_some() {
-            return ret;
-        }
-
-        println!(
-            "<{}> Error: expected identifier found '{}'",
-            token.position, token.value
-        );
-
-        None
     }
 
-    fn get_variable(
-        &mut self,
-        variable: &VariableNode,
-        field_token: &mut Option<Token>,
-    ) -> Option<Expression> {
-        if let Some(c) = self.lexer.peek_char() {
-            if c == '=' {
-                if let Some(_equal_op) = self.lexer.next() {
-                    let next = self.lexer.next().unwrap();
+    fn visit_struct_field(&mut self) -> Option<Expression> {
+        if let Some(struct_field) = self.lexer.next() {
+            for (i, variable) in self.variables.clone().iter().enumerate() {
+                if let Expression::StructInstance(struct_instance) = variable.value.as_ref() {
+                    for field in struct_instance.fields.iter() {
+                        if field.metadata.name != struct_field.value {
+                            continue;
+                        }
 
-                    if let Some(expr) = self.parse_expr(&next) {
-                        let new_value = Box::new(expr);
+                        if let Some(c) = self.lexer.peek_char() {
+                            let mut is_eq_node = false;
 
-                        let assign_node = AssignNode {
-                            value: variable.clone(),
-                            new_value,
-                        };
+                            if let Some(n) = self.lexer.peek_char_by_amount(2) {
+                                is_eq_node = n == '=';
+                            }
 
-                        return Some(Expression::AssignStatement(assign_node));
+                            if c == '=' && !is_eq_node {
+                                let _equal_op = self.lexer.next().unwrap();
+
+                                let next = self.lexer.next().unwrap();
+                                if let Some(value) = self.parse_expr(&next) {
+                                    let new_value = Box::new(value);
+
+                                    let field_assign_node = FieldAssignNode {
+                                        struct_instance: variable.clone(),
+                                        field: field.clone(),
+                                        new_value: new_value.clone(),
+                                    };
+
+                                    if let Expression::StructInstance(struct_instance_node) =
+                                        self.variables[i].value.as_ref()
+                                    {
+                                        for (j, field) in
+                                            struct_instance_node.fields.clone().iter().enumerate()
+                                        {
+                                            if field.metadata.name
+                                                == field_assign_node.field.metadata.name
+                                            {
+                                                let var = self.variables[i].value.as_mut();
+                                                if let Expression::StructInstance(instance) = var {
+                                                    instance.fields[j].value = new_value.clone();
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    return Some(Expression::StructFieldAssign(field_assign_node));
+                                }
+                            } else {
+                                let field_access_node = FieldAccessNode {
+                                    struct_instance: variable.clone(),
+                                    field: field.clone(),
+                                };
+
+                                return self.visit_binary_op(Some(Expression::StructFieldAccess(
+                                    field_access_node,
+                                )));
+                            }
+                        }
                     }
                 }
             }
-        }
-
-        if self.lexer.character() == '.' {
-            let _period = self.lexer.next().unwrap();
-            *field_token = Some(self.lexer.next().unwrap());
-        } else {
-            return self.visit_binary_op(Some(Expression::Variable(variable.clone())));
         }
 
         None
@@ -480,48 +562,6 @@ impl Parser {
             self.struct_instances.push(struct_instance_node.clone());
 
             return Some(Expression::StructInstance(struct_instance_node));
-        }
-
-        None
-    }
-
-    fn get_or_assign_struct_field(&mut self, field_token: Option<Token>) -> Option<Expression> {
-        if let Some(struct_field) = field_token {
-            for variable in self.variables.clone().iter() {
-                if let Expression::StructInstance(struct_instance) = variable.value.as_ref() {
-                    for field in struct_instance.fields.iter() {
-                        if field.metadata.name != struct_field.value {
-                            continue;
-                        }
-
-                        if let Some(c) = self.lexer.peek_char() {
-                            if c == '=' {
-                                let _equal_op = self.lexer.next().unwrap();
-
-                                let next = self.lexer.next().unwrap();
-                                if let Some(value) = self.parse_expr(&next) {
-                                    let field_assign_node = FieldAssignNode {
-                                        struct_instance: variable.clone(),
-                                        field: field.clone(),
-                                        new_value: Box::new(value),
-                                    };
-
-                                    return Some(Expression::StructFieldAssign(field_assign_node));
-                                }
-                            } else {
-                                let field_access_node = FieldAccessNode {
-                                    struct_instance: variable.clone(),
-                                    field: field.clone(),
-                                };
-
-                                return self.visit_binary_op(Some(Expression::StructFieldAccess(
-                                    field_access_node,
-                                )));
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         None

@@ -1,15 +1,14 @@
-StructDef('Person': fields: [
+StructDef('Program': fields: [
 	name: "String",
-	age: "i32",
 ])
 
-ProcDef('do_work':
-	return_type: None
+ProcDef('process':
+	return_type: bool
 	args: [
-		p: "Person",
+		p: "Program",
 	]
 	content: [
-		StructFieldAssign('p': field: 'name': value: Literal('Jack': String))
+		Return(BinaryOp(StructFieldAccess('p': field: 'name': value: Literal('': String)), Eq, Literal('Hello': String)))
 	]
 )
 
@@ -17,15 +16,12 @@ ProcDef('main':
 	return_type: None
 	args: []
 	content: [
-		Let('person': Struct('Person': fields: [
-			name: Literal('Jack': String),
-			age: Literal('22': Number),
+		Let('p': Struct('Program': fields: [
+			name: Literal('Hello world': String),
 		]))
-		StructFieldAssign('person': field: 'age': value: BinaryOp(StructFieldAccess('person': field: 'age': value: Literal('22': Number)), Add, Literal('1': Number)))
-		FunCall('do_work': args: [
-			p: Variable('person': Struct('Person': fields: [
-			name: Literal('Jack': String),
-			age: Literal('22': Number),
+		FunCall('process': args: [
+			p: Variable('p': Struct('Program': fields: [
+			name: Literal('Hello world': String),
 		]))
 		])
 	]
