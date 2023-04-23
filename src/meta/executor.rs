@@ -62,7 +62,10 @@ impl Executor {
 
     fn execute_statement(statement: &Expression, memory: &mut RuntimeVM) -> Option<Expression> {
         match statement {
-            Expression::IfStatement(_) => {}
+            Expression::IfStatement(..) => {}
+            Expression::WhileStatement(..) => {}
+            Expression::ForLoop(..) => {}
+            Expression::RangeStatement(..) => {}
             Expression::LetStatement(let_node) => {
                 let metadata = VarMetadataNode {
                     name: let_node.name.clone(),

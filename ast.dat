@@ -1,28 +1,16 @@
-StructDef('Program': fields: [
-	name: "String",
-])
-
-ProcDef('process':
-	return_type: bool
-	args: [
-		p: "Program",
-	]
-	content: [
-		Return(BinaryOp(StructFieldAccess('p': field: 'name': value: Literal('': String)), Eq, Literal('Hello': String)))
-	]
-)
-
 ProcDef('main':
 	return_type: None
 	args: []
 	content: [
-		Let('p': Struct('Program': fields: [
-			name: Literal('Hello world': String),
-		]))
-		FunCall('process': args: [
-			p: Variable('p': Struct('Program': fields: [
-			name: Literal('Hello world': String),
-		]))
+		Let('a': Literal('false': Bool))
+		If(Variable('a': Literal('false': Bool)): [
+			Let('b': Literal('1': Number))
+		])
+		While(Variable('a': Literal('false': Bool)): [
+			Let('c': Literal('2': Number))
+		])
+		For(count: Range(Literal('0': Number)..Literal('5': Number)): [
+			Let('x': Variable('count': Literal('0': Number)))
 		])
 	]
 )

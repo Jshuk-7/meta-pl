@@ -130,6 +130,12 @@ impl Lexer {
 
         let value = String::from(token);
 
+        let next = if self.valid() {
+            self.character()
+        } else {
+            0 as char
+        };
+
         match token {
             '(' => Some(Token::from(TokenType::Oparen, value, pos)),
             ')' => Some(Token::from(TokenType::Cparen, value, pos)),
@@ -138,7 +144,14 @@ impl Lexer {
             ':' => Some(Token::from(TokenType::Colon, value, pos)),
             ';' => Some(Token::from(TokenType::Semicolon, value, pos)),
             ',' => Some(Token::from(TokenType::Comma, value, pos)),
-            '.' => Some(Token::from(TokenType::Period, value, pos)),
+            '.' => {
+                if next == '.' {
+                    self.advance();
+                    Some(Token::from(TokenType::Range, String::from(".."), pos))
+                } else {
+                    Some(Token::from(TokenType::Period, value, pos))
+                }
+            }
             _ => None,
         }
     }
@@ -207,6 +220,9 @@ impl Lexer {
 
         let token_type = match value.as_str() {
             "if" => TokenType::If,
+            "while" => TokenType::While,
+            "for" => TokenType::For,
+            "in" => TokenType::In,
             "let" => TokenType::Let,
             "proc" => TokenType::Proc,
             "struct" => TokenType::Struct,
@@ -228,9 +244,15 @@ impl Lexer {
             c = self.character();
 
             if c == '.' {
-                is_float = true;
-                self.advance();
-                c = self.character();
+                if let Some(n) = self.peek_char() {
+                    if n == '.' {
+                        is_float = false;
+                    } else {
+                        is_float = true;
+                        self.advance();
+                        c = self.character();
+                    }
+                }
             }
         }
 

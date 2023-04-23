@@ -3,7 +3,7 @@ use std::fmt::{Display, Write};
 use crate::{
     nodes::{
         AssignNode, BinaryOpNode, FieldAccessNode, FieldAssignNode, FunCallNode, IfNode, LetNode,
-        ProcDefNode, ReturnNode, StructDefNode, StructInstanceNode, VariableNode,
+        ProcDefNode, ReturnNode, StructDefNode, StructInstanceNode, VariableNode, WhileNode, RangeNode, ForNode,
     },
     token::{LiteralType, Token},
 };
@@ -11,6 +11,9 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum Expression {
     IfStatement(IfNode),
+    WhileStatement(WhileNode),
+    ForLoop(ForNode),
+    RangeStatement(RangeNode),
     LetStatement(LetNode),
     AssignStatement(AssignNode),
     ReturnStatement(ReturnNode),
@@ -36,13 +39,45 @@ impl Display for Expression {
                 for statement in if_node.statements.iter() {
                     statements
                         .write_fmt(format_args!("\t\t\t{statement}\n"))
-                        .unwrap()
+                        .unwrap();
                 }
                 if !if_node.statements.is_empty() {
                     statements.push_str("\t\t");
                 }
 
                 f.write_fmt(format_args!("If({}: [{statements}])", if_node.value))
+            }
+            Expression::WhileStatement(while_node) => {
+                let mut statements = String::new();
+                if !while_node.statements.is_empty() {
+                    statements.push('\n');
+                }
+                for statement in while_node.statements.iter() {
+                    statements.write_fmt(format_args!("\t\t\t{statement}\n"))
+                        .unwrap();
+                }
+                if !while_node.statements.is_empty() {
+                    statements.push_str("\t\t");
+                }
+
+                f.write_fmt(format_args!("While({}: [{statements}])", while_node.value))
+            }
+            Expression::ForLoop(for_node) => {
+                let mut statements = String::new();
+                if !for_node.statements.is_empty() {
+                    statements.push('\n');
+                }
+                for statement in for_node.statements.iter() {
+                    statements.write_fmt(format_args!("\t\t\t{statement}\n")).unwrap()
+                }
+                if !for_node.statements.is_empty() {
+                    statements.push_str("\t\t");
+                }
+
+                f.write_fmt(format_args!("For({}: {}: [{statements}])", for_node.counter.metadata.name, for_node.range))
+            }
+            Expression::RangeStatement(range_node) => {
+                f.write_fmt(format_args!("Range({}..{})", range_node.start, range_node.end))
             }
             Expression::LetStatement(let_node) => {
                 f.write_fmt(format_args!("Let('{}': {})", let_node.name, let_node.value))
@@ -65,7 +100,7 @@ impl Display for Expression {
                 }
                 for arg in proc_def.args.iter() {
                     arguments
-                        .write_fmt(format_args!("\t\t{}: {:?},\n", arg.name, arg.type_name))
+                        .write_fmt(format_args!("\t\t{}: {},\n", arg.name, arg.type_name))
                         .unwrap();
                 }
                 if !proc_def.args.is_empty() {
@@ -123,7 +158,7 @@ impl Display for Expression {
                 }
                 for field in struct_def.fields.iter() {
                     fields
-                        .write_fmt(format_args!("\t{}: {:?},\n", field.name, field.type_name))
+                        .write_fmt(format_args!("\t{}: {},\n", field.name, field.type_name))
                         .unwrap();
                 }
 

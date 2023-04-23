@@ -16,6 +16,10 @@ pub enum TokenType {
     #[default]
     None,
     If,
+    While,
+    For,
+    In,
+    Range,
     Let,
     Proc,
     Ident,

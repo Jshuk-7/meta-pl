@@ -23,6 +23,25 @@ pub struct IfNode {
 }
 
 #[derive(Debug, Clone)]
+pub struct WhileNode {
+    pub value: Box<Expression>,
+    pub statements: Vec<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ForNode {
+    pub counter: VariableNode,
+    pub range: Box<Expression>,
+    pub statements: Vec<Expression>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RangeNode {
+    pub start: Box<Expression>,
+    pub end: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
 pub struct LetNode {
     pub name: String,
     pub type_name: String,

@@ -4,9 +4,9 @@ use crate::{
     expression::Expression,
     lexer::Lexer,
     nodes::{
-        AssignNode, BinaryOp, BinaryOpNode, FieldAccessNode, FieldAssignNode, FunCallNode, IfNode,
-        LetNode, ProcDefNode, ReturnNode, StructDefNode, StructInstanceNode, VarMetadataNode,
-        VariableNode,
+        AssignNode, BinaryOp, BinaryOpNode, FieldAccessNode, FieldAssignNode, ForNode, FunCallNode,
+        IfNode, LetNode, ProcDefNode, RangeNode, ReturnNode, StructDefNode, StructInstanceNode,
+        VarMetadataNode, VariableNode, WhileNode,
     },
     token::{LiteralType, Token, TokenType},
 };
@@ -94,6 +94,8 @@ impl Parser {
 
         match token.kind {
             TT::If => self.visit_if_statement(),
+            TT::While => self.visit_while_statement(),
+            TT::For => self.visit_for_loop(),
             TT::Let => self.visit_let_statement(),
             TT::Return => self.visit_return_statement(),
             TT::Proc => self.visit_procedure_def(),
@@ -110,37 +112,127 @@ impl Parser {
     fn visit_if_statement(&mut self) -> Option<Expression> {
         let first = self.lexer.next().unwrap();
         if let Some(expr) = self.parse_expr(&first) {
-            let binary_op = self.visit_boolean_expr(expr);
+            let boolean_expr = self.visit_boolean_expr(expr);
 
-            binary_op.as_ref()?;
+            boolean_expr.as_ref()?;
 
             if let Some(_ocurly) = self.lexer.next() {
                 let mut statements = Vec::new();
 
-                let mut next = self.lexer.next().unwrap();
-                while self.lexer.valid() {
+                while let Some(next) = self.lexer.next() {
                     if let TokenType::Ccurly = next.kind {
                         break;
                     } else if let TokenType::Semicolon = next.kind {
-                        next = self.lexer.next().unwrap();
                         continue;
                     }
 
                     if let Some(expr) = self.parse_expr(&next) {
                         statements.push(expr.clone());
-
-                        if let Some(n) = self.lexer.next() {
-                            next = n;
-                        }
                     }
                 }
 
                 let if_node = IfNode {
-                    value: Box::new(binary_op.unwrap()),
+                    value: Box::new(boolean_expr.unwrap()),
                     statements,
                 };
 
                 return Some(Expression::IfStatement(if_node));
+            }
+        }
+
+        None
+    }
+
+    fn visit_while_statement(&mut self) -> Option<Expression> {
+        let first = self.lexer.next().unwrap();
+        if let Some(expr) = self.parse_expr(&first) {
+            let boolean_expr = self.visit_boolean_expr(expr);
+
+            boolean_expr.as_ref()?;
+
+            if let Some(_ocurly) = self.lexer.next() {
+                let mut statements = Vec::new();
+
+                while let Some(next) = self.lexer.next() {
+                    if let TokenType::Ccurly = next.kind {
+                        break;
+                    } else if let TokenType::Semicolon = next.kind {
+                        continue;
+                    }
+
+                    if let Some(expr) = self.parse_expr(&next) {
+                        statements.push(expr.clone());
+                    }
+                }
+
+                let while_node = WhileNode {
+                    value: Box::new(boolean_expr.unwrap()),
+                    statements,
+                };
+
+                return Some(Expression::WhileStatement(while_node));
+            }
+        }
+
+        None
+    }
+
+    fn visit_for_loop(&mut self) -> Option<Expression> {
+        if let Some(counter_token) = self.lexer.next() {
+            let _in = self.lexer.next().unwrap();
+
+            let start_token = self.lexer.next().unwrap();
+            let _range_op = self.lexer.next().unwrap();
+            let end_token = self.lexer.next().unwrap();
+
+            let start;
+            let end;
+
+            if let Some(s) = self.parse_expr(&start_token) {
+                start = Box::new(s);
+
+                let initial_counter_value = start.clone();
+                let counter = self.make_variable(
+                    counter_token.value,
+                    "i32".to_string(),
+                    initial_counter_value,
+                );
+
+                self.variables.push(counter.clone());
+                let counter_index = self.variables.len() - 1;
+
+                if let Some(e) = self.parse_expr(&end_token) {
+                    end = Box::new(e);
+
+                    let range_node = RangeNode { start, end };
+                    let range = Box::new(Expression::RangeStatement(range_node));
+
+                    if let Some(_ocurly) = self.lexer.next() {
+                        let mut statements = Vec::new();
+
+                        while let Some(next) = self.lexer.next() {
+                            if let TokenType::Ccurly = next.kind {
+                                break;
+                            } else if let TokenType::Semicolon = next.kind {
+                                continue;
+                            }
+
+                            if let Some(statement) = self.parse_expr(&next) {
+                                statements.push(statement);
+                            }
+                        }
+
+                        let for_node = ForNode {
+                            counter,
+                            range,
+                            statements,
+                        };
+
+                        self.variables.remove(counter_index);
+
+                        return Some(Expression::ForLoop(for_node));
+                    }
+                }
             }
         }
 
