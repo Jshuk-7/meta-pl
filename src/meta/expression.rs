@@ -3,8 +3,8 @@ use std::fmt::{Display, Write};
 use crate::{
     nodes::{
         AssignNode, BinaryOpNode, FieldAccessNode, FieldAssignNode, ForNode, FunCallNode, IfNode,
-        LetNode, ProcDefNode, RangeNode, ReturnNode, StructDefNode, StructInstanceNode,
-        VariableNode, WhileNode,
+        ImplFunCallNode, ImplNode, LetNode, ProcDefNode, RangeNode, ReturnNode, StructDefNode,
+        StructInstanceNode, VariableNode, WhileNode,
     },
     token::{LiteralType, Token},
 };
@@ -22,6 +22,8 @@ pub enum Expression {
     ProcDef(ProcDefNode),
     FunCall(FunCallNode),
     StructDef(StructDefNode),
+    ImplStatement(ImplNode),
+    ImplFunCall(ImplFunCallNode),
     StructInstance(StructInstanceNode),
     StructFieldAssign(FieldAssignNode),
     StructFieldAccess(FieldAccessNode),
@@ -173,6 +175,32 @@ impl Display for Expression {
                 f.write_fmt(format_args!(
                     "StructDef('{}': fields: [{fields}])\n",
                     struct_def.type_name
+                ))
+            }
+            Expression::ImplStatement(impl_node) => {
+                let mut procedures = String::new();
+                if !impl_node.procedures.is_empty() {
+                    procedures.push('\n');
+                }
+                for procedure in impl_node.procedures.iter() {
+                    procedures
+                        .write_fmt(format_args!("\t\t{procedure}\n"))
+                        .unwrap()
+                }
+                if !impl_node.procedures.is_empty() {
+                    procedures.push('\t');
+                }
+
+                f.write_fmt(format_args!(
+                    "Impl('{}': [{procedures}])",
+                    impl_node.struct_def.type_name
+                ))
+            }
+            Expression::ImplFunCall(impl_fun_call_node) => {
+                let type_name = impl_fun_call_node.impl_node.struct_def.type_name.clone();
+                f.write_fmt(format_args!(
+                    "ImplFunCall('{}': {})",
+                    type_name, impl_fun_call_node.fun_call_node
                 ))
             }
             Expression::StructInstance(struct_instance_node) => {

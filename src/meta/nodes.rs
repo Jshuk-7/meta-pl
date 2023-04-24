@@ -92,6 +92,18 @@ pub struct StructDefNode {
 }
 
 #[derive(Debug, Clone)]
+pub struct ImplNode {
+    pub procedures: Vec<Expression>,
+    pub struct_def: StructDefNode,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImplFunCallNode {
+    pub impl_node: ImplNode,
+    pub fun_call_node: Box<Expression>,
+}
+
+#[derive(Debug, Clone)]
 pub struct StructInstanceNode {
     pub struct_def: StructDefNode,
     pub fields: Vec<VariableNode>,

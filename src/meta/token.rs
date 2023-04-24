@@ -21,6 +21,8 @@ pub enum TokenType {
     In,
     Range,
     Let,
+    Impl,
+    ScopeResolution,
     Proc,
     Ident,
     Struct,

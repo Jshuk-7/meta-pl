@@ -92,13 +92,21 @@ impl Executor {
 
                 variable.value = assign_node.new_value.clone();
             }
-            Expression::ReturnStatement(_) => {}
-            Expression::Variable(_) => {}
-            Expression::ProcDef(_) => todo!(),
+            Expression::ReturnStatement(..) => {}
+            Expression::Variable(..) => {}
+            Expression::ProcDef(..) => todo!(),
             Expression::FunCall(fun_call_node) => {
                 Executor::execute_procedure(fun_call_node.proc_def.clone(), memory)
             }
-            Expression::StructDef(_) => todo!(),
+            Expression::StructDef(..) => todo!(),
+            Expression::ImplStatement(..) => todo!(),
+            Expression::ImplFunCall(impl_fun_call_node) => {
+                if let Expression::ProcDef(proc_def_node) =
+                    impl_fun_call_node.fun_call_node.as_ref()
+                {
+                    Executor::execute_procedure(proc_def_node.clone(), memory)
+                }
+            }
             Expression::StructInstance(struct_instance_node) => {
                 memory.structs.push(struct_instance_node.clone());
             }

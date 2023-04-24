@@ -141,7 +141,18 @@ impl Lexer {
             ')' => Some(Token::from(TokenType::Cparen, value, pos)),
             '{' => Some(Token::from(TokenType::Ocurly, value, pos)),
             '}' => Some(Token::from(TokenType::Ccurly, value, pos)),
-            ':' => Some(Token::from(TokenType::Colon, value, pos)),
+            ':' => {
+                if next == ':' {
+                    self.advance();
+                    Some(Token::from(
+                        TokenType::ScopeResolution,
+                        String::from("::"),
+                        pos,
+                    ))
+                } else {
+                    Some(Token::from(TokenType::Colon, value, pos))
+                }
+            }
             ';' => Some(Token::from(TokenType::Semicolon, value, pos)),
             ',' => Some(Token::from(TokenType::Comma, value, pos)),
             '.' => {
@@ -224,6 +235,7 @@ impl Lexer {
             "for" => TokenType::For,
             "in" => TokenType::In,
             "let" => TokenType::Let,
+            "impl" => TokenType::Impl,
             "proc" => TokenType::Proc,
             "struct" => TokenType::Struct,
             "return" => TokenType::Return,
