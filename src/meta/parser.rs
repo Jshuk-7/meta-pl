@@ -816,7 +816,7 @@ impl Parser {
     }
 
     fn visit_binary_op(&mut self, expr: Option<Expression>) -> Option<Expression> {
-        let mut ex = expr;
+        let mut ex = expr.clone();
 
         let ops = "+-*/=<>!";
         while let Some(potential_op) = self.lexer.peek_char() {
@@ -827,26 +827,16 @@ impl Parser {
             let op_token = self.lexer.next().unwrap();
             let op = self.token_type_to_binary_op(op_token.kind);
 
-            let next = self.lexer.next().unwrap();
-            if let TokenType::Literal(lt) = next.kind {
-                let rhs = Box::new(Expression::Literal(next, lt));
-
-                if let Some(lhs) = ex {
-                    let binary_op_node = BinaryOpNode {
-                        lhs: Box::new(lhs),
-                        op,
-                        rhs,
-                    };
-
-                    ex = Some(Expression::BinaryOp(binary_op_node));
-                }
-            } else if let TokenType::Ident = next.kind {
-                if let Some(var) = self
-                    .variables
-                    .iter()
-                    .find(|&v| v.metadata.name == next.value)
-                {
-                    let rhs = Box::new(Expression::Variable(var.clone()));
+            if let BinaryOp::Inc | BinaryOp::Dec = op {
+                if let Some(Expression::Variable(..)) = expr.clone() {
+                    let rhs = Box::new(Expression::Literal(
+                        Token::from(
+                            TokenType::Literal(LiteralType::Number),
+                            String::from("1"),
+                            self.lexer.get_cursor_pos(),
+                        ),
+                        LiteralType::Number,
+                    ));
 
                     if let Some(lhs) = ex {
                         let binary_op_node = BinaryOpNode {
@@ -856,6 +846,59 @@ impl Parser {
                         };
 
                         ex = Some(Expression::BinaryOp(binary_op_node));
+                    }
+                } else {
+                    let rhs = Box::new(Expression::Literal(
+                        Token::from(
+                            TokenType::Literal(LiteralType::Number),
+                            String::from("1"),
+                            self.lexer.get_cursor_pos(),
+                        ),
+                        LiteralType::Number,
+                    ));
+
+                    if let Some(lhs) = ex {
+                        let binary_op_node = BinaryOpNode {
+                            lhs: Box::new(lhs),
+                            op,
+                            rhs,
+                        };
+
+                        ex = Some(Expression::BinaryOp(binary_op_node));
+                    }
+                }
+            } else {
+                let next = self.lexer.next().unwrap();
+
+                if let TokenType::Literal(lt) = next.kind {
+                    let rhs = Box::new(Expression::Literal(next, lt));
+
+                    if let Some(lhs) = ex {
+                        let binary_op_node = BinaryOpNode {
+                            lhs: Box::new(lhs),
+                            op,
+                            rhs,
+                        };
+
+                        ex = Some(Expression::BinaryOp(binary_op_node));
+                    }
+                } else if let TokenType::Ident = next.kind {
+                    if let Some(var) = self
+                        .variables
+                        .iter()
+                        .find(|&v| v.metadata.name == next.value)
+                    {
+                        let rhs = Box::new(Expression::Variable(var.clone()));
+
+                        if let Some(lhs) = ex {
+                            let binary_op_node = BinaryOpNode {
+                                lhs: Box::new(lhs),
+                                op,
+                                rhs,
+                            };
+
+                            ex = Some(Expression::BinaryOp(binary_op_node));
+                        }
                     }
                 }
             }
@@ -971,6 +1014,8 @@ impl Parser {
     fn token_type_to_binary_op(&self, kind: TokenType) -> BinaryOp {
         type TT = TokenType;
         match kind {
+            TT::Inc => BinaryOp::Inc,
+            TT::Dec => BinaryOp::Dec,
             TT::Add => BinaryOp::Add,
             TT::AddAssign => BinaryOp::AddAssign,
             TT::Sub => BinaryOp::Sub,

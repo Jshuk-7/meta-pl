@@ -94,7 +94,9 @@ impl Executor {
             }
             Expression::ReturnStatement(..) => {}
             Expression::Variable(..) => {}
-            Expression::ProcDef(..) => todo!(),
+            Expression::ProcDef(proc_def_node) => {
+                Executor::execute_procedure(proc_def_node.clone(), memory)
+            }
             Expression::FunCall(fun_call_node) => {
                 Executor::execute_procedure(fun_call_node.proc_def.clone(), memory)
             }

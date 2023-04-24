@@ -183,6 +183,9 @@ impl Lexer {
                 if next == '=' {
                     self.advance();
                     Some(Token::from(TokenType::AddAssign, String::from("+="), pos))
+                } else if next == '+' {
+                    self.advance();
+                    Some(Token::from(TokenType::Inc, String::from("++"), pos))
                 } else {
                     Some(Token::from(TokenType::Add, String::from(op), pos))
                 }
@@ -191,6 +194,9 @@ impl Lexer {
                 if next == '=' {
                     self.advance();
                     Some(Token::from(TokenType::SubAssign, String::from("-="), pos))
+                } else if next == '-' {
+                    self.advance();
+                    Some(Token::from(TokenType::Dec, String::from("--"), pos))
                 } else {
                     Some(Token::from(TokenType::Sub, String::from(op), pos))
                 }

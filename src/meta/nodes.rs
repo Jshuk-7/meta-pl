@@ -3,6 +3,8 @@ use crate::expression::Expression;
 #[derive(Debug, Clone)]
 pub enum BinaryOp {
     None,
+    Inc,
+    Dec,
     Add,
     AddAssign,
     Sub,

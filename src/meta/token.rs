@@ -35,6 +35,8 @@ pub enum TokenType {
     Period,
     Ocurly,
     Ccurly,
+    Inc,
+    Dec,
     Add,
     AddAssign,
     Sub,
