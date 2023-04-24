@@ -56,9 +56,11 @@ ProcDef('main':
 		StructFieldAssign('car': field: 'year': value: Literal('2010': Number))
 		If(BinaryOp(StructFieldAccess('car': field: 'year': value: Literal('2010': Number)), Eq, Literal('2010': Number)): [
 			While(BinaryOp(StructFieldAccess('car': field: 'year': value: Literal('2010': Number)), Lt, Literal('2023': Number)): [
-			StructFieldAssign('car': field: 'year': value: BinaryOp(StructFieldAccess('car': field: 'year': value: Literal('2010': Number)), Add, Literal('1': Number)))
+			BinaryOp(StructFieldAccess('car': field: 'year': value: Literal('2010': Number)), AddAssign, Literal('1': Number))
 		])
 		])
+		Let('int': Literal('0': Number))
+		BinaryOp(Variable('int': Literal('0': Number)), AddAssign, Literal('1': Number))
 		For(year: Range(Literal('2010': Number)..Literal('2024': Number)): [
 			Let('new_car': ImplFunCall('Car': FunCall('new': args: [
 			make: Literal('Honda': String)

@@ -120,9 +120,9 @@ impl Executor {
                     }
                 }
             }
-            Expression::StructFieldAccess(_) => {}
-            Expression::BinaryOp(_) => todo!(),
-            Expression::Literal(_, _) => todo!(),
+            Expression::StructFieldAccess(..) => {}
+            Expression::BinaryOp(..) => {}
+            Expression::Literal(..) => {}
         }
 
         None

@@ -4,9 +4,13 @@ use crate::expression::Expression;
 pub enum BinaryOp {
     None,
     Add,
+    AddAssign,
     Sub,
+    SubAssign,
     Mul,
+    MulAssign,
     Div,
+    DivAssign,
     Eq,
     Ne,
     Lt,

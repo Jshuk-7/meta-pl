@@ -849,13 +849,13 @@ impl Parser {
                     let rhs = Box::new(Expression::Variable(var.clone()));
 
                     if let Some(lhs) = ex {
-                        let binary_op = BinaryOpNode {
+                        let binary_op_node = BinaryOpNode {
                             lhs: Box::new(lhs),
                             op,
                             rhs,
                         };
 
-                        ex = Some(Expression::BinaryOp(binary_op));
+                        ex = Some(Expression::BinaryOp(binary_op_node));
                     }
                 }
             }
@@ -972,9 +972,13 @@ impl Parser {
         type TT = TokenType;
         match kind {
             TT::Add => BinaryOp::Add,
+            TT::AddAssign => BinaryOp::AddAssign,
             TT::Sub => BinaryOp::Sub,
+            TT::SubAssign => BinaryOp::SubAssign,
             TT::Mul => BinaryOp::Mul,
+            TT::MulAssign => BinaryOp::SubAssign,
             TT::Div => BinaryOp::Div,
+            TT::DivAssign => BinaryOp::SubAssign,
             TT::Eq => BinaryOp::Eq,
             TT::Ne => BinaryOp::Ne,
             TT::Lt => BinaryOp::Lt,

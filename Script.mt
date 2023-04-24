@@ -28,9 +28,12 @@ proc main(): i32 {
 
     if car.year == 2010 {
         while car.year < 2023 {
-            car.year = car.year + 1;
+            car.year += 1;
         }
     }
+
+    let int = 0;
+    int += 1;
 
     for year in 2010..2024 {
         let new_car: Car = Car::new("Honda", "Accord", year);

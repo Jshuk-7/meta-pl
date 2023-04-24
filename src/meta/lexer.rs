@@ -179,10 +179,38 @@ impl Lexer {
         self.advance();
 
         match op {
-            '+' => Some(Token::from(TokenType::Add, String::from(op), pos)),
-            '-' => Some(Token::from(TokenType::Sub, String::from(op), pos)),
-            '*' => Some(Token::from(TokenType::Mul, String::from(op), pos)),
-            '/' => Some(Token::from(TokenType::Div, String::from(op), pos)),
+            '+' => {
+                if next == '=' {
+                    self.advance();
+                    Some(Token::from(TokenType::AddAssign, String::from("+="), pos))
+                } else {
+                    Some(Token::from(TokenType::Add, String::from(op), pos))
+                }
+            }
+            '-' => {
+                if next == '=' {
+                    self.advance();
+                    Some(Token::from(TokenType::SubAssign, String::from("-="), pos))
+                } else {
+                    Some(Token::from(TokenType::Sub, String::from(op), pos))
+                }
+            }
+            '*' => {
+                if next == '=' {
+                    self.advance();
+                    Some(Token::from(TokenType::MulAssign, String::from("*="), pos))
+                } else {
+                    Some(Token::from(TokenType::Mul, String::from(op), pos))
+                }
+            }
+            '/' => {
+                if next == '=' {
+                    self.advance();
+                    Some(Token::from(TokenType::DivAssign, String::from("/="), pos))
+                } else {
+                    Some(Token::from(TokenType::Div, String::from(op), pos))
+                }
+            }
             '=' => {
                 if next == '=' {
                     self.advance();
